@@ -16,18 +16,18 @@ class Decoder:
         self.target_dir = target_dir
 
         header = self.file.read(4).decode("utf-8")
-        if header != "BIGF":
-            print("Invalid file format.")
+        # if header != "BIGF":
+            # print("Invalid file format.")
 
         self.entries = []
 
     def unpack(self):
-        print(f"Processing {self.path}")
+        # print(f"Processing {self.path}")
         file_size = struct.unpack("I", self.file.read(4))[0]
-        print(f"size: {file_size}")
+        # print(f"size: {file_size}")
         self.file_count, index_size = struct.unpack(">II", self.file.read(8))
-        print(f"entry count: {self.file_count}")
-        print(f"index size: {index_size}")
+        # print(f"entry count: {self.file_count}")
+        # print(f"index size: {index_size}")
 
         self.entries = []
         for _ in range(self.file_count):
@@ -58,39 +58,39 @@ class Decoder:
             
         # skip files that already exist.
         if os.path.exists(path):
-            print(f"{path} exists. Skipping.")
+            # print(f"{path} exists. Skipping.")
             return
         
-        print(f"Opening {path} for writing")
+        # print(f"Opening {path} for writing")
         f = open(path, "wb")
         
-        print(f"Seeked to {entry.position}")
+        # print(f"Seeked to {entry.position}")
         self.file.seek(entry.position)
         
-        print("Starting data transfer")
+        # print("Starting data transfer")
         for _ in range(0, entry.size):
             byte = self.file.read(1)
             f.write(byte)
             
-        print(f"Wrote {entry.size} bytes")
+        # print(f"Wrote {entry.size} bytes")
         
-        print("Done, closing file.")
+        # print("Done, closing file.")
         f.close()
         
-        print()
+        # print()
 
     def get_file(self, entry):
         string = ""
         
-        print(f"Seeked to {entry.position}")
+        # print(f"Seeked to {entry.position}")
         self.file.seek(entry.position)
         
-        print("Starting data transfer")
+        # print("Starting data transfer")
         for _ in range(0, entry.size):
             byte = self.file.read(1)
             string += byte.decode("latin-1")
             
-        print(f"Wrote {entry.size} bytes")
+        # print(f"Wrote {entry.size} bytes")
         
         return string
 

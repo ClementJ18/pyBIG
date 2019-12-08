@@ -32,14 +32,16 @@ class GUI(QMainWindow):
     def display_shortcut(self, text):
         if text in self.buttons:
             try:
-                shortcut = re.findall(self.pattern, self.buttons[text])[2]
-                self.shortcut.setText(shortcut)
+                shortcut = re.findall(self.pattern, self.buttons[text])
+                self.shortcut.setText(shortcut[0][1])
                 self.has_shortcut = True
             except IndexError:
+                self.shortcut.setText("")
                 self.has_shortcut = False
             finally:
                 self.shortcut.setEnabled(True)
         else:
+            self.shortcut.setText("")
             self.shortcut.setEnabled(False)
 
     def set_new_shortcut(self):
@@ -48,10 +50,10 @@ class GUI(QMainWindow):
             new_string = self.buttons[self.search_box.text()]
             self.has_shortcut = True
         else:
-            new_string = re.sub(self.pattern, rf"\1(&{self.buttons[self.search_box.text()]})", self.shortcut.text().upper()) 
+            new_string = re.sub(self.pattern, rf"\1(&{self.shortcut.text().upper()})", self.buttons[self.search_box.text()]) 
             self.buttons[self.search_box.text()] = new_string
 
-        QMessageBox.information(self, "Success", f"Successfully set <b>{self.search_box.text()}</b> to <b>{new_string}</b>", QMessageBox.Ok, QMessageBox.Ok)
+        QMessageBox.information(self, "Success", f"Successfully set <b>{self.search_box.text()}</b> to <b>{self.shortcut.text().upper()}</b>", QMessageBox.Ok, QMessageBox.Ok)
 
     def save_changes(self):
         name = ""
@@ -67,11 +69,11 @@ class GUI(QMainWindow):
                 name = None
 
         string = "\n".join(self.lines).encode("latin-1")
-        with open("data/lotr.str", "w") as f:
+        with open("data/lotr.str", "wb") as f:
             f.write(string)
 
         QMessageBox.information(self, "Success", "Successfully saved changes please drag the data folder created into the file that is about to open. Once you've dragged it make sure to press save before closing.", QMessageBox.Ok, QMessageBox.Ok)
-        subprocess.Popen(["FinalBIG.exe", self.lang.text()])
+        subprocess.call(["FinalBIG.exe", self.lang.text()])
         QMessageBox.information(self, "Success", "Given that you have properly pressed saved all your shortcuts have been saved. Thank you for using this system")
         self.close()
 
@@ -144,7 +146,7 @@ class GUI(QMainWindow):
         self.edit_btn = QPushButton("Edit Shortcuts", self)
         self.edit_btn.resize(150, 50)
         self.edit_btn.move(275, 125)
-        self.edit_btn.clicked.connect(self.decode)
+        self.edit_btn.clicked.connect(self.decode)        
 
         label = QLabel("Search by name:", self)
         label.move(25, 200)
@@ -162,7 +164,7 @@ class GUI(QMainWindow):
         self.shortcut = QLineEdit(self)
         self.shortcut.resize(60, 30)
         self.shortcut.move(350, 225)
-        self.shortcut.setMaxLenght(1)
+        self.shortcut.setMaxLength(1)
 
         self.new_shortcut_btn = QPushButton("Set Shortcut", self)
         self.new_shortcut_btn.resize(120, 30)
@@ -178,6 +180,9 @@ class GUI(QMainWindow):
         self.setFixedSize(700, 400)
         self.setWindowTitle('Hotkey Customizer')
         self.show()
+
+        self.lang.setText("C:\\Users\\Admin\\Desktop\\Mini-Libs\\custom_shortcuts\\_a999_EDAIN.big")
+        self.decode()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
