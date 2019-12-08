@@ -181,8 +181,8 @@ class GUI(QMainWindow):
         self.setWindowTitle('Hotkey Customizer')
         self.show()
 
-        self.lang.setText("C:\\Users\\Admin\\Desktop\\Mini-Libs\\custom_shortcuts\\_a999_EDAIN.big")
-        self.decode()
+        # self.lang.setText("C:\\Users\\Admin\\Desktop\\Mini-Libs\\custom_shortcuts\\_a999_EDAIN.big")
+        # self.decode()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
