@@ -30,24 +30,33 @@ class Decoder:
         self.file_count, index_size = struct.unpack(">II", self.file.read(8))
         logging.debug(f"entry count: {self.file_count}")
         logging.debug(f"index size: {index_size}")
-
+        test_dex = 0
         self.entries = []
         for _ in range(self.file_count):
             position, entry_size = struct.unpack(">II", self.file.read(8))
+            test_dex += 8
 
-            name = ""
+            name = b""
             while True:
                 n = self.file.read(1)
                 if ord(n) == 0:
                     break
 
-                name += n.decode('latin-1')
+                name += n
             
             logging.debug(name)
+            logging.debug(len(name))
+            test_dex += len(name)
             logging.debug(position)
             logging.debug(entry_size)
-            e = Entry(name=name, position=position, size=entry_size)   
+            e = Entry(name=name.decode('latin-1'), position=position, size=entry_size)   
             self.entries.append(e)
+
+            #account for null bytes
+            test_dex += 1
+        
+        logging.debug("test dex")
+        logging.debug(test_dex)
 
     def extract(self, entry):
         if self.target_dir is None:

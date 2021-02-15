@@ -7,6 +7,8 @@ import logging
 
 from decoder import Decoder
 
+#https://opensage.readthedocs.io/file-formats/big/index.html
+
 class Encoder:
     def __init__(self, directory):
         self.directory = directory
@@ -37,7 +39,6 @@ class Encoder:
         offset += 4
 
         # total size of index table in bytes, unsigned integer, 4 bytes, big endian byte order
-        # total_size = sum([8 + len(x["name"].encode("latin-1")) for x in binary])
         index_size = 0
         for file in binary:
             if file["name"] not in file_list:
@@ -48,17 +49,21 @@ class Encoder:
             #position and entry size
             index_size += 8
             index_size += len(struct.pack(f"{len(name)}s", name))
+            # logging.debug(len(struct.pack(f"{len(name)}s", name)))
 
 
         f.write(struct.pack(">I", index_size))
         offset += 4
+
         raw_data = b""
         position = 1
+
+        logging.debug(offset+index_size)
 
         for file in binary:
             # position of embedded file within BIG-file, unsigned integer, 4 bytes, big endian byte order
             # size of embedded data, unsigned integer, 4 bytes, big endian byte order
-            f.write(struct.pack(">II", offset+index_size+position, file["size"]))
+            f.write(struct.pack(">II", offset + index_size + position, file["size"]))
 
             # file name, cstring, ends with null byte
             name = file["name"].encode("latin-1") + b"\x00"
