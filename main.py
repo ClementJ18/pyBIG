@@ -33,9 +33,12 @@ class GUI(QMainWindow):
         if text in self.buttons:
             try:
                 shortcut = re.findall(self.pattern, self.buttons[text])
+                print(self.buttons[text])
+                print(shortcut)
                 self.shortcut.setText(shortcut[0][1])
                 self.has_shortcut = True
             except IndexError:
+                print("No shortcut")
                 self.shortcut.setText("")
                 self.has_shortcut = False
             finally:
@@ -112,7 +115,7 @@ class GUI(QMainWindow):
             if line.startswith("CONTROLBAR"):
                 name = line.split(":")[1]
             elif line.startswith('"') and name is not None:
-                self.buttons[name] = line[1:-2]
+                self.buttons[name] = line[1:-1]
             elif line.lower().startswith("end"):
                 name = None
 
