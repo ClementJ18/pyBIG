@@ -5,3 +5,6 @@ test
 fake_test
 English.big
 test.big
+edain_files
+__pycache__
+tree.json

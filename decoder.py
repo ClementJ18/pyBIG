@@ -2,6 +2,8 @@ from collections import namedtuple
 import os
 import struct
 import io
+import json
+import logging
 
 """
 Based of the BIG-file decoder by aderyn@gmail.com
@@ -16,18 +18,18 @@ class Decoder:
         self.target_dir = target_dir
 
         header = self.file.read(4).decode("utf-8")
-        print(f"header: {header}")
+        logging.debug(f"header: {header}")
         # if header != "BIGF":
-            # print("Invalid file format.")
+            # logging.debug("Invalid file format.")
         self.entries = []
 
     def unpack(self):
-        print(f"Processing {self.path}")
+        logging.debug(f"Processing {self.path}")
         file_size = struct.unpack("I", self.file.read(4))[0]
-        print(f"size: {file_size}")
+        logging.debug(f"size: {file_size}")
         self.file_count, index_size = struct.unpack(">II", self.file.read(8))
-        print(f"entry count: {self.file_count}")
-        print(f"index size: {index_size}")
+        logging.debug(f"entry count: {self.file_count}")
+        logging.debug(f"index size: {index_size}")
 
         self.entries = []
         for _ in range(self.file_count):
@@ -41,9 +43,9 @@ class Decoder:
 
                 name += n.decode('latin-1')
             
-            print(name)
-            print(position)
-            print(entry_size)
+            logging.debug(name)
+            logging.debug(position)
+            logging.debug(entry_size)
             e = Entry(name=name, position=position, size=entry_size)   
             self.entries.append(e)
 
@@ -60,39 +62,39 @@ class Decoder:
             
         # # skip files that already exist.
         # if os.path.exists(path):
-        #     # print(f"{path} exists. Skipping.")
+        #     # logging.debug(f"{path} exists. Skipping.")
         #     return
         
-        # print(f"Opening {path} for writing")
+        # logging.debug(f"Opening {path} for writing")
         f = open(path, "wb")
         
-        # print(f"Seeked to {entry.position}")
+        # logging.debug(f"Seeked to {entry.position}")
         self.file.seek(entry.position)
         
-        # print("Starting data transfer")
+        # logging.debug("Starting data transfer")
         for _ in range(0, entry.size):
             byte = self.file.read(1)
             f.write(byte)
             
-        # print(f"Wrote {entry.size} bytes")
+        # logging.debug(f"Wrote {entry.size} bytes")
         
-        # print("Done, closing file.")
+        # logging.debug("Done, closing file.")
         f.close()
         
-        # print()
+        # logging.debug()
 
     def get_file(self, entry):
         string = ""
         
-        # print(f"Seeked to {entry.position}")
+        # logging.debug(f"Seeked to {entry.position}")
         self.file.seek(entry.position)
         
-        # print("Starting data transfer")
+        # logging.debug("Starting data transfer")
         for _ in range(0, entry.size):
             byte = self.file.read(1)
             string += byte.decode("latin-1")
             
-        # print(f"Wrote {entry.size} bytes")
+        # logging.debug(f"Wrote {entry.size} bytes")
         
         return string
 
@@ -108,7 +110,23 @@ class Decoder:
 
         return file
 
+    def generate_tree(self):
+        with open("tree.json", "r") as f:
+            tree = json.load(f)
+
+        tree[self.path.split("\\")[-1]] = [x.name for x in self.entries]
+
+        with open(f"tree.json", "w") as f:
+            json.dump(tree, f, indent=4)
+
+    def close(self):
+        self.file.close()
+
 if __name__ == '__main__':
-    dec = Decoder("English.big", "fake_test")
+    logging.basicConfig(level=logging.DEBUG)
+
+    dec = Decoder("English.big", "test")
     dec.unpack()
     dec.extract_all()
+    dec.generate_tree()
+    dec.close()
