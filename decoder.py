@@ -19,8 +19,8 @@ class Decoder:
 
         header = self.file.read(4).decode("utf-8")
         logging.debug(f"header: {header}")
-        # if header != "BIGF":
-            # logging.debug("Invalid file format.")
+        if header != "BIG4":
+            logging.error("Invalid file format.")
         self.entries = []
 
     def unpack(self):
@@ -30,11 +30,14 @@ class Decoder:
         self.file_count, index_size = struct.unpack(">II", self.file.read(8))
         logging.debug(f"entry count: {self.file_count}")
         logging.debug(f"index size: {index_size}")
-        test_dex = 0
+
+        if file_size != os.path.getsize(self.path):
+            logging.error(f"File size and actual file size do not match: {file_size} vs {os.path.getsize(self.path)}")
+
+
         self.entries = []
         for _ in range(self.file_count):
             position, entry_size = struct.unpack(">II", self.file.read(8))
-            test_dex += 8
 
             name = b""
             while True:
@@ -44,19 +47,11 @@ class Decoder:
 
                 name += n
             
-            logging.debug(name)
-            logging.debug(len(name))
-            test_dex += len(name)
-            logging.debug(position)
-            logging.debug(entry_size)
+            logging.debug(f"name: {name}")
+            logging.debug(f"position: {position}")
+            logging.debug(f"file size: {entry_size}")
             e = Entry(name=name.decode('latin-1'), position=position, size=entry_size)   
             self.entries.append(e)
-
-            #account for null bytes
-            test_dex += 1
-        
-        logging.debug("test dex")
-        logging.debug(test_dex)
 
     def extract(self, entry):
         if self.target_dir is None:
@@ -87,7 +82,7 @@ class Decoder:
             
         # logging.debug(f"Wrote {entry.size} bytes")
         
-        # logging.debug("Done, closing file.")
+        logging.debug("DONE")
         f.close()
         
         # logging.debug()
@@ -134,8 +129,8 @@ class Decoder:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
-    dec = Decoder("English.big", "test")
+    dec = Decoder("English.big", "extract")
     dec.unpack()
-    dec.extract_all()
+    # dec.extract_all()
     dec.generate_tree()
     dec.close()

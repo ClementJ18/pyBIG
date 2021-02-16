@@ -17,6 +17,8 @@ class Encoder:
         offset = 0
         f = open(f"output/{filename}", "wb")
 
+        logging.debug(f"Processing {filename}")
+
         if file_restrictions:
             with open("tree.json", "r") as tree:
                 file_list = json.load(tree)[filename]
@@ -30,52 +32,59 @@ class Encoder:
 
         binary, total_size, file_count = self.dir_to_binary(self.directory, file_list)
 
-        #total file size, unsigned integer, 4 bytes, little endian byte order
-        f.write(struct.pack("<I", total_size))
-        offset += 4
+        #https://github.com/chipgw/openbfme/blob/master/bigreader/bigarchive.cpp
+        #/* 8 bytes for every entry + 20 at the start and end. */
+        first_entry = (len(binary) * 8) + 20
 
-        #number of embedded files, unsigned integer, 4 bytes, big endian byte order
-        f.write(struct.pack(">I", file_count))
-        offset += 4
-
-        # total size of index table in bytes, unsigned integer, 4 bytes, big endian byte order
-        index_size = 0
         for file in binary:
             if file["name"] not in file_list:
                 continue
 
-            name = file["name"].encode("latin-1") + b"\x00"
+            first_entry += len(file["name"]) + 1
 
-            #position and entry size
-            index_size += 8
-            index_size += len(struct.pack(f"{len(name)}s", name))
-            # logging.debug(len(struct.pack(f"{len(name)}s", name)))
+        #total file size, unsigned integer, 4 bytes, little endian byte order
+        size = total_size + first_entry + 1
+        logging.debug(f"size: {size}")
+        f.write(struct.pack("<I", size))
+        offset += 4
 
+        #number of embedded files, unsigned integer, 4 bytes, big endian byte order
+        logging.debug(f"entry count: {file_count}")
+        f.write(struct.pack(">I", file_count))
+        offset += 4
 
-        f.write(struct.pack(">I", index_size))
+        # total size of index table in bytes, unsigned integer, 4 bytes, big endian byte order
+        logging.debug(f"index size: {first_entry}")
+        f.write(struct.pack(">I", first_entry))
         offset += 4
 
         raw_data = b""
         position = 1
 
-        logging.debug(offset+index_size)
-
         for file in binary:
             # position of embedded file within BIG-file, unsigned integer, 4 bytes, big endian byte order
             # size of embedded data, unsigned integer, 4 bytes, big endian byte order
-            f.write(struct.pack(">II", offset + index_size + position, file["size"]))
+            f.write(struct.pack(">II", first_entry + position, file["size"]))
 
             # file name, cstring, ends with null byte
             name = file["name"].encode("latin-1") + b"\x00"
             f.write(struct.pack(f"{len(name)}s", name))
 
-            raw_data += file["binary"]
+
+            with open(file["path"], "rb") as b:
+                raw_data += b.read()
 
             position += file["size"]
+
+        #not sure what's this but I think we need it see:
+        #https://github.com/chipgw/openbfme/blob/master/bigreader/bigarchive.cpp
+        f.write(b"L253")
+        f.write(b"\0")
 
         # raw file data at the positions specified in the index
         f.write(raw_data)
         f.close()
+        logging.debug("DONE")
 
 
     def dir_to_binary(self, directory, restricted_files):
@@ -88,18 +97,17 @@ class Encoder:
                 complete_name = f'{dir_name}\\{filename}'
                 sage_name = complete_name.replace(f"{directory}\\", "", 1)
                 if os.path.normpath(sage_name) not in restricted_files and restricted_files:
-                    # logging.debug(sage_name)
                     continue
 
                 size = os.path.getsize(complete_name)
 
-                with open(complete_name, "rb") as f:
-                    binary = f.read()
-
+                logging.debug(f"name: {complete_name}")
+                logging.debug(f"position: ???")
+                logging.debug(f"file size: {size}")
                 binary_files.append({
                     "name": sage_name,
                     "size": size,
-                    "binary": binary,
+                    "path": complete_name,
                 })
 
                 file_count += 1
@@ -110,10 +118,12 @@ class Encoder:
         return binary_files, total_size, file_count
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    enc = Encoder("test")
-    enc.pack("English.big", True)
+    file_name = "__edain_data.big"
 
-    dec = Decoder("output/English.big")
-    dec.unpack()
-    dec.close()
+    logging.basicConfig(level=logging.DEBUG)
+    enc = Encoder("extract")
+    enc.pack(file_name, True)
+
+    # dec = Decoder(f"output/{file_name}")
+    # dec.unpack()
+    # dec.close()
