@@ -12,10 +12,14 @@ Based of the BIG-file decoder by aderyn@gmail.com
 Entry = namedtuple("Entry", "name position size")
 
 class Decoder:
-    def __init__(self, file, target_dir=None):
+    def __init__(self, file):
+        """
+        path: str
+            path to the big file you want to decode
+
+        """
         self.path = file
         self.file = open(file, "rb")
-        self.target_dir = target_dir
 
         header = self.file.read(4).decode("utf-8")
         logging.debug(f"header: {header}")
@@ -24,6 +28,7 @@ class Decoder:
         self.entries = []
 
     def unpack(self):
+        """Get a list of files in the big"""
         logging.debug(f"Processing {self.path}")
         file_size = struct.unpack("I", self.file.read(4))[0]
         logging.debug(f"size: {file_size}")
@@ -53,11 +58,9 @@ class Decoder:
             e = Entry(name=name.decode('latin-1'), position=position, size=entry_size)   
             self.entries.append(e)
 
-    def extract(self, entry):
-        if self.target_dir is None:
-            raise ValueError
-        
-        path = os.path.join(self.target_dir, entry.name)
+    def extract(self, entry, target_dir):
+        """Extract a file in the big"""
+        path = os.path.join(target_dir, entry.name)
         
         # create the directories if they don't exist.
         file_dir = path[:path.rfind("\\")]
@@ -88,6 +91,7 @@ class Decoder:
         # logging.debug()
 
     def get_file(self, entry):
+        """Get a specific file in the big based on file name"""
         string = ""
         
         # logging.debug(f"Seeked to {entry.position}")
@@ -102,9 +106,9 @@ class Decoder:
         
         return string
 
-    def extract_all(self):
+    def extract_all(self, target_dir):
         for entry in self.entries:
-            self.extract(entry)
+            self.extract(entry, target_dir)
 
     def get_strings(self):
         self.unpack()
@@ -114,13 +118,13 @@ class Decoder:
 
         return file
 
-    def generate_tree(self):
-        with open("tree.json", "r") as f:
+    def generate_tree(self, tree_path):
+        with open(tree_path, "r") as f:
             tree = json.load(f)
 
-        tree[self.path.split("\\")[-1]] = [x.name for x in self.entries]
+        tree[self.path.split("\\")[-1]] = {x.name: None for x in self.entries}
 
-        with open(f"tree.json", "w") as f:
+        with open(tree_path, "w") as f:
             json.dump(tree, f, indent=4)
 
     def close(self):
@@ -129,8 +133,8 @@ class Decoder:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
-    dec = Decoder("English.big", "extract")
-    dec.unpack()
+    dec = Decoder("English.big")
+    dec.unpack("extract")
     # dec.extract_all()
     dec.generate_tree()
     dec.close()

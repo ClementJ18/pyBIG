@@ -40,6 +40,8 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     # generate_tree("edain_files")
 
-    # pack("test")
+    # pack("extract")
 
     # unpack("edain_files")
+
+    #clear_tree()

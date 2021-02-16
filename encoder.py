@@ -10,17 +10,33 @@ from decoder import Decoder
 #https://opensage.readthedocs.io/file-formats/big/index.html
 
 class Encoder:
-    def __init__(self, directory):
-        self.directory = directory
+    def __init__(self, directory, save_directory="output"):
+        """
+        directory : str
+            Directory containing all the files you want to pack
+        save_directory : Optional[str]
+            Directory where you want to send the output bigs
 
-    def pack(self, filename, file_restrictions):
+        """
+        self.directory = directory
+        self.save_directory = save_directory
+
+    def pack(self, filename, tree_path=False):
+        """
+        filename: str
+            Name of the file you want to pack this will be used for the tree lookup
+
+        tree_path : str
+            Path to the tree used for the file lookup, if not specific, no file lookup will be conducted
+
+        """
         offset = 0
-        f = open(f"output/{filename}", "wb")
+        f = open(f"{self.save_directory}/{filename}", "wb")
 
         logging.debug(f"Processing {filename}")
 
-        if file_restrictions:
-            with open("tree.json", "r") as tree:
+        if tree_path:
+            with open(tree_path, "r") as tree:
                 file_list = json.load(tree)[filename]
                 # logging.debug(file_list)
 
@@ -122,7 +138,7 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG)
     enc = Encoder("extract")
-    enc.pack(file_name, True)
+    enc.pack(file_name, "tree.json")
 
     # dec = Decoder(f"output/{file_name}")
     # dec.unpack()
