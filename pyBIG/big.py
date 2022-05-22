@@ -131,17 +131,18 @@ class Archive:
 
         for dir_name, sub_dir_list, file_list in os.walk(path):
             for filename in file_list:
-                complete_name = f'{dir_name}\\{filename}'
+                file_path = os.path.join(dir_name, filename)
+                name = file_path.replace(path, "")[1:].replace("/", "\\")
 
-                with open(os.path.join(path, dir_name, filename), "rb") as f:
+                with open(file_path, "rb") as f:
                     contents = f.read()
                     size = len(contents)
 
 
-                logging.debug(f"name: {complete_name}")
+                logging.debug(f"name: {name}")
                 logging.debug(f"position: ???")
                 logging.debug(f"file size: {size}")
-                binary_files.append((complete_name, size, contents))
+                binary_files.append((name, size, contents))
 
                 file_count += 1
                 total_size += size
@@ -227,11 +228,13 @@ class Archive:
         self.modified_entries[name] = EntryEdit(name, FileAction.REMOVE, None)
 
     def extract(self, output: str):
+        self._pack()
+        self._unpack()
         for entry in self.entries.values():
-            path = os.path.join(output, entry.name)
+            path = os.path.normpath(os.path.join(output, entry.name).replace("\\", "/"))
         
             # create the directories if they don't exist.
-            file_dir = path[:path.rfind("/")]
+            file_dir = os.path.dirname(path)
             if not os.path.exists(file_dir):
                 os.makedirs(file_dir)
 
@@ -244,7 +247,6 @@ class Archive:
 
     def save(self, path):
         self._pack()
-
         with open(path, "wb") as f:
             f.write(self.archive.getbuffer())
 

@@ -5,7 +5,7 @@ import unittest
 
 from pyBIG import Archive
 
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
 TEST_FILE = "data\\ini\\weapon.ini"
 TEST_CONTENT = "john"
@@ -47,7 +47,7 @@ class TestArchive(unittest.TestCase):
 
         self.assertEqual(contents, TEST_CONTENT)
 
-    def extract_and_load(self):
+    def test_extract_and_load(self):
         self.archive.extract("test_data/output")
         self.assertTrue(os.path.exists("test_data/output/data/ini/weapon.ini"))
 
@@ -57,7 +57,7 @@ class TestArchive(unittest.TestCase):
         new_archive.save("test_data/output/test.big")
         self.assertTrue(os.path.exists("test_data/output/test.big"))
 
-        shutil.rmtree("test_datat/output/data")
+        shutil.rmtree("test_data/output/data")
         os.remove("test_data/output/test.big")
 
 
