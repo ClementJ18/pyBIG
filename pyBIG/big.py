@@ -14,21 +14,34 @@ class FileAction(enum.Enum):
     EDIT =   2
 
 class Archive:
-    def __init__(self, content: bytes, *, encoding: str ='latin-1'):
+    """The core of the library, represents a BIG file and allows
+    the user to mainpulate it programatically
+    
+    Params
+    -------
+    content : Optional[bytes]
+        Raw bytes of the original big file
+
+    """
+
+    def __init__(self, content: bytes = b"", *, entries=None):
         self.archive = io.BytesIO(content)
-        self.encoding = encoding
 
         self.header = self.archive.read(4).decode("utf-8")
 
-        self.entries = {}
+        self.entries = entries or {}
         self.modified_entries = {}
 
-        self._unpack()
+        if entries is None:
+            self._unpack()
 
     def _unpack(self):
         """Get a list of files in the big"""
         self.entries = {}
         self.archive.seek(0)
+
+        if not self.archive.getbuffer().nbytes > 0:
+            return
 
         #header
         self.archive.read(4)
@@ -50,7 +63,7 @@ class Archive:
 
                 name += n
             
-            name = name.decode(self.encoding)
+            name = name.decode("latin-1")
             logging.debug(f"name: {name}")
             logging.debug(f"position: {position}")
             logging.debug(f"file size: {entry_size}")
@@ -58,15 +71,19 @@ class Archive:
             self.entries[name] = Entry(name, position, entry_size)
 
     def _pack(self):
+        """Rewrite the archive with the modifications stores
+        in self.modified_entries."""
         binary, total_size, file_count = self._create_file_list()
-        self.archive = self._pack_file_list(binary, total_size, file_count)
+        self.archive, self.entries = self._pack_file_list(binary, total_size, file_count)
         self.archive.seek(0)
         self.modified_entries = {}
 
     @staticmethod
     def _pack_file_list(binary, total_size, file_count):
+        """Index the files and append the raw data to create a complete archive"""
         offset = 0
         archive = io.BytesIO()
+        entries = {}
 
         #header, charstring, 4 bytes - always BIG4 or something similiar
         header = "BIG4"
@@ -110,6 +127,8 @@ class Archive:
             archive.write(struct.pack(f"{len(name)}s", name))
             raw_data += file[2]
 
+            entries[file[0]] = Entry(file[0], first_entry + position, file[1])
+
             position += file[1]
 
         #not sure what's this but I think we need it see:
@@ -121,10 +140,12 @@ class Archive:
         archive.write(raw_data)
         logging.debug("DONE")
 
-        return archive
+        return archive, entries
 
     @staticmethod
-    def _gather_directory_files(path):
+    def _create_file_list_from_directory(path):
+        """Gather the necessary information on each file in the directory to
+        prepare for packing."""
         binary_files = []
         file_count = 0
         total_size = 0
@@ -151,6 +172,10 @@ class Archive:
         return binary_files, total_size, file_count
 
     def _create_file_list(self):
+        """Re-gather the necessary information on each file in the archive
+        while taking into account the modifications made by the user since
+        then.
+        """
         binary_files = []
         file_count = 0
         total_size = 0
@@ -184,13 +209,25 @@ class Archive:
         return binary_files, total_size, file_count
 
     def _get_file(self, name: str) -> bytes:
-        """Get a specific file in the big based on file name"""
+        """Get the contents of a specific file in the big based on file name"""
         entry = self.entries[name]
         self.archive.seek(entry.position)        
         return self.archive.read(entry.size)
         
 
     def file_exists(self, name: str) -> bool:
+        """Check if a file exists
+        
+        Params
+        -------
+        name : str
+            Name of the file, usually something like data\\ini\\weapon.ini
+            
+        Returns
+        --------
+        bool
+            True if the file exists, else false
+        """
         if name in self.modified_entries:
             return not self.modified_entries[name].action is FileAction.REMOVE
 
@@ -198,8 +235,27 @@ class Archive:
     
 
     def read_file(self, name: str):
+        """Get the raw bytes of the file if the file exists. This method has the
+        advantage over simply accessing Archive.entries that it will
+        also check pending modified entries
+        
+        Params
+        -------
+        name : str
+            Name of the file, usually something like data\\ini\\weapon.ini
+
+        Returns
+        -------
+        bytes
+            File bytes
+
+        Raises
+        ------
+            KeyError
+                File not found
+        """
         if not self.file_exists(name):
-            raise ValueError(f"File '{name}' does not exist.")
+            raise KeyError(f"File '{name}' does not exist.")
 
         if name in self.modified_entries:
             return self.modified_entries["name"].file
@@ -207,8 +263,28 @@ class Archive:
         return self._get_file(name)
 
     def add_file(self, name: str, content: bytes):
+        """Mark a file to be added. This does not modify the archive itself yet.
+        You need to call Archive.repack for the archive to be actually modified. 
+        However, the get methods of the class take in account modified entries.
+
+        The method will not permit adding a file that already exists.
+        
+        Params
+        -------
+        name : str
+            Name of the file, usually something like data\\ini\\weapon.ini
+        content : bytes
+            File bytes to be added
+
+        Raises
+        ------
+            KeyError
+                File already exists
+            ValueError
+                File name contains forbidden characters
+        """
         if self.file_exists(name):
-            raise ValueError(f"File '{name}' already exists.")
+            raise KeyError(f"File '{name}' already exists.")
 
         if "/" in name:
             raise ValueError(f"File '{name}' cannot contain '/', use '\\' instead.")
@@ -216,20 +292,55 @@ class Archive:
         self.modified_entries[name] = EntryEdit(name, FileAction.ADD, content)
 
     def edit_file(self, name: str, content: bytes):
+        """Edit an existing file with new content. This does not actually modify
+        the file yet. The method cannot edit a file that hasn't been added yet, either
+        as a modified entry or already present in the archive.
+        
+        Params
+        -------
+        name : str
+            Name of the file, usually something like data\\ini\\weapon.ini
+        content : bytes
+            File bytes
+
+        Raises
+        ------
+            KeyError
+                File not found
+        """
         if not self.file_exists(name):
-            raise ValueError(f"File '{name}' does not exist.")
+            raise KeyError(f"File '{name}' does not exist.")
 
         self.modified_entries[name] = EntryEdit(name, FileAction.EDIT, content)
 
     def remove_file(self, name: str):
+        """Mark as existing file for deletion. The deletion will only happen once
+        the archive has been repacked. 
+        
+        Params
+        -------
+        name : str
+            Name of the file, usually something like data\\ini\\weapon.ini
+
+        Raises
+        ------
+            KeyError
+                File not found
+        """
         if not self.file_exists(name):
-            raise ValueError(f"File '{name}' does not exist.")
+            raise KeyError(f"File '{name}' does not exist.")
 
         self.modified_entries[name] = EntryEdit(name, FileAction.REMOVE, None)
 
     def extract(self, output: str):
+        """Extract the contents of the archive to a folder.
+        
+        Params
+        -------
+        output : str
+            The folder to extract everything to
+        """
         self._pack()
-        self._unpack()
         for entry in self.entries.values():
             path = os.path.normpath(os.path.join(output, entry.name).replace("\\", "/"))
         
@@ -242,20 +353,43 @@ class Archive:
                 f.write(self._get_file(entry.name))
 
     def repack(self):
+        """Update the archive to include all the modified entries. This clears
+        the list and updates the archive with the new data.
+        """
         self._pack()
-        self._unpack()
 
-    def save(self, path):
+    def save(self, path : str):
+        """Save the archive to a file.
+        
+        Params
+        -------
+        path : str
+            The path to save to. Something like 'path/to/file/test.big'
+        """
         self._pack()
         with open(path, "wb") as f:
             f.write(self.archive.getbuffer())
 
     @classmethod
-    def from_directory(cls, path):
-        binary_files, total_size, file_count = cls._gather_directory_files(path)
-        archive = cls._pack_file_list(binary_files, total_size, file_count)
+    def from_directory(cls, path: str) -> 'Archive':
+        """Generate a BIG archive from a directory. This is useful for 
+        compiling an archive without adding each file manually. You simply
+        give the top level directory and every file will be added recursively.
+        
+        Params
+        -------
+        path : str
+            Path to the top level folder of the files you wish to compile
+            
+        Returns
+        --------
+        Archive
+            Compiled archived
+        """
+        binary_files, total_size, file_count = cls._create_file_list_from_directory(path)
+        archive, entries = cls._pack_file_list(binary_files, total_size, file_count)
         archive.seek(0)
 
-        return cls(archive.read())
+        return cls(archive.read(), entries=entries)
 
 

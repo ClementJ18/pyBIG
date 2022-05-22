@@ -60,6 +60,13 @@ class TestArchive(unittest.TestCase):
         shutil.rmtree("test_data/output/data")
         os.remove("test_data/output/test.big")
 
+    def test_empty_archive(self):
+        archive = Archive()
+        archive.add_file(f"{TEST_FILE}.inc", TEST_CONTENT.encode(TEST_ENCODING))
+        archive.repack()
+
+        self.assertIn(f"{TEST_FILE}.inc", archive.entries)
+
 
 if __name__ == '__main__':
     unittest.main()

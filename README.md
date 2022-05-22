@@ -17,10 +17,31 @@ It is important to note that these methods do not actually modify the archive bu
 
 You can look at the tests for more examples.
 
-```
+```python
 from pyBIG import Archive
 
 with open("test.big", "rb") as f:
     archive = Archive(f.read())
+
+# get the contents of a file as bytes
+contents = archive.read_file("data\\ini\\weapon.ini")
+
+#add a new file
+archive.add_file("data\\ini\john.ini", b"this is the story of a man named john")
+archive.repack()
+
+#remove a file
+archive.remove_file("data\\ini\\john.ini")
+archive.repack()
+
+#save the big file back to disk, this will also take care of repacking
+# the file with the latest modified entries
+archive.save("test.big")
+
+# extract all the files in the archive
+archive.extract("output/")
+
+# load an archive from a directory
+archive = Archive.from_directory("output/")
 
 ```
