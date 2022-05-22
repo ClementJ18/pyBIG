@@ -3,6 +3,14 @@ Python library to programatically manipulate .big files, the archive format used
 
 This library is largely possible due to the work done by the OpenSage team ([Link](https://github.com/OpenSAGE/Docs/blob/master/file-formats/big/index.rst)). Eseentially this library is a python wrapper around the knowledge they gathered with some helper functions.
 
+## Installation
+
+You can get it from Pypi: https://pypi.org/project/pyBIG/
+
+```
+pip install pyBIG
+```
+
 ## Usage
 The library is based on the pyBIG.Archive object. This objects takes raw bytes representing a BIG archive. The decision to take raw bytes allow the user to decide where those bytes come from, whether a file stored in memory or on disk. There is also a class method, Archive.from_directory that allows you to load a directory on the disk painlessly.
 
