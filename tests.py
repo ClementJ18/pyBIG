@@ -17,10 +17,10 @@ class TestArchive(unittest.TestCase):
             self.archive = Archive(f.read())        
 
     def test_decode(self):
-        contents = self.archive.read_file(TEST_FILE).decode(TEST_ENCODING)
+        contents = self.archive.read_file(TEST_FILE)
 
-        with open("test_data/weapon.ini", "r", encoding=TEST_ENCODING) as f:
-            self.assertEqual(f.read(), contents.replace("\r", ""))
+        with open("test_data/weapon.ini", "rb") as f:
+            self.assertEqual(f.read(), contents)
 
         self.assertEqual(len(self.archive.entries), 1152)
 
