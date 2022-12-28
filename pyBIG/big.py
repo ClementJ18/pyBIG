@@ -258,7 +258,7 @@ class Archive:
             raise KeyError(f"File '{name}' does not exist.")
 
         if name in self.modified_entries:
-            return self.modified_entries["name"].file
+            return self.modified_entries[name].content
 
         return self._get_file(name)
 
