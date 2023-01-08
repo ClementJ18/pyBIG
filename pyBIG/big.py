@@ -84,6 +84,7 @@ class Archive:
     def _pack_file_list(binary, total_size, file_count):
         """Index the files and append the raw data to create a complete archive"""
         archive = io.BytesIO()
+        raw_data = io.BytesIO()
         entries = {}
 
         #header, charstring, 4 bytes - always BIG4 or something similiar
@@ -110,10 +111,7 @@ class Archive:
         logging.info(f"index size: {first_entry}")
         archive.write(struct.pack(">I", first_entry))
 
-        raw_data = b""
         position = 1
-
-        print(binary[0])
         
         logging.info("packing files...")
         for file in binary:
@@ -126,7 +124,7 @@ class Archive:
             packed_name = struct.pack(f"{len(name)}s", name)
             archive.write(pos_size+packed_name)
 
-            raw_data += file[2]
+            raw_data.write(file[2])
 
             entries[file[0]] = Entry(file[0], first_entry + position, file[1])
 
@@ -138,7 +136,8 @@ class Archive:
         archive.write(b"\0")
 
         # raw file data at the positions specified in the index
-        archive.write(raw_data)
+        raw_data.seek(0)
+        archive.write(raw_data.read())
         logging.debug("DONE")
 
         return archive, entries
