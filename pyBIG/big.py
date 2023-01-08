@@ -245,7 +245,7 @@ class Archive:
         file_list = list({
             *[
                 name for name in self.entries.keys()
-                if self.modified_entries.get(name) is not FileAction.REMOVE
+                if self.modified_entries.get(name, EntryEdit(name, None, None)).action is not FileAction.REMOVE
             ], 
             *[
                 name for name, file in self.modified_entries.items() 
