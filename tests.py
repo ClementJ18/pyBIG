@@ -67,6 +67,9 @@ class TestArchive(unittest.TestCase):
 
         self.assertIn(f"{TEST_FILE}.inc", archive.entries)
 
+    def test_utils(self):
+        self.archive.file_list()
+
 
 if __name__ == '__main__':
     unittest.main()

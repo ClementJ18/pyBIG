@@ -1,12 +1,14 @@
-from collections import namedtuple
 import enum
 import io
 import logging
 import os
 import struct
+from collections import namedtuple
+from typing import List
 
 Entry = namedtuple("Entry", "name position size")
 EntryEdit = namedtuple("EntryEdit", "name action content")
+
 
 class FileAction(enum.Enum):
     ADD =    0
@@ -81,14 +83,12 @@ class Archive:
     @staticmethod
     def _pack_file_list(binary, total_size, file_count):
         """Index the files and append the raw data to create a complete archive"""
-        offset = 0
         archive = io.BytesIO()
         entries = {}
 
         #header, charstring, 4 bytes - always BIG4 or something similiar
         header = "BIG4"
         archive.write(struct.pack("4s", header.encode("utf-8")))
-        offset += 4
 
         #https://github.com/chipgw/openbfme/blob/master/bigreader/bigarchive.cpp
         #/* 8 bytes for every entry + 20 at the start and end. */
@@ -101,30 +101,31 @@ class Archive:
         size = total_size + first_entry + 1
         logging.info(f"size: {size}")
         archive.write(struct.pack("<I", size))
-        offset += 4
 
         #number of embedded files, unsigned integer, 4 bytes, big endian byte order
         logging.info(f"entry count: {file_count}")
         archive.write(struct.pack(">I", file_count))
-        offset += 4
 
         # total size of index table in bytes, unsigned integer, 4 bytes, big endian byte order
         logging.info(f"index size: {first_entry}")
         archive.write(struct.pack(">I", first_entry))
-        offset += 4
 
         raw_data = b""
         position = 1
 
+        print(binary[0])
+        
         logging.info("packing files...")
         for file in binary:
             # position of embedded file within BIG-file, unsigned integer, 4 bytes, big endian byte order
             # size of embedded data, unsigned integer, 4 bytes, big endian byte order
-            archive.write(struct.pack(">II", first_entry + position, file[1]))
+            pos_size = struct.pack(">II", first_entry + position, file[1])
 
             # file name, cstring, ends with null byte
             name = file[0].encode("latin-1") + b"\x00"
-            archive.write(struct.pack(f"{len(name)}s", name))
+            packed_name = struct.pack(f"{len(name)}s", name)
+            archive.write(pos_size+packed_name)
+
             raw_data += file[2]
 
             entries[file[0]] = Entry(file[0], first_entry + position, file[1])
@@ -232,7 +233,26 @@ class Archive:
             return not self.modified_entries[name].action is FileAction.REMOVE
 
         return name in self.entries
-    
+
+    def file_list(self) -> List[str]:
+        """Return a list of files, compiling both actual files 
+        and new/removed files
+
+        Returns
+        --------
+        List[str]
+            The list of files
+        """
+        file_list = list({
+            *self.entries.keys(), 
+            *[
+                name for name, file in self.modified_entries.items() 
+                if file.action is not FileAction.REMOVE
+            ]
+        })
+        file_list.sort()
+
+        return file_list
 
     def read_file(self, name: str):
         """Get the raw bytes of the file if the file exists. This method has the
@@ -340,9 +360,9 @@ class Archive:
         output : str
             The folder to extract everything to
         """
-        self._pack()
-        for entry in self.entries.values():
-            path = os.path.normpath(os.path.join(output, entry.name).replace("\\", "/"))
+        for name in self.file_list():
+            file = self.read_file(name)
+            path = os.path.normpath(os.path.join(output, name).replace("\\", "/"))
         
             # create the directories if they don't exist.
             file_dir = os.path.dirname(path)
@@ -350,7 +370,7 @@ class Archive:
                 os.makedirs(file_dir)
 
             with open(path, "wb") as f:
-                f.write(self._get_file(entry.name))
+                f.write(file)
 
     def repack(self):
         """Update the archive to include all the modified entries. This clears
