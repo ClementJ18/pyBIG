@@ -243,7 +243,10 @@ class Archive:
             The list of files
         """
         file_list = list({
-            *self.entries.keys(), 
+            *[
+                name for name in self.entries.keys()
+                if self.modified_entries.get(name) is not FileAction.REMOVE
+            ], 
             *[
                 name for name, file in self.modified_entries.items() 
                 if file.action is not FileAction.REMOVE
