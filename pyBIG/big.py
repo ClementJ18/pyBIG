@@ -150,7 +150,7 @@ class Archive:
         file_count = 0
         total_size = 0
 
-        for dir_name, sub_dir_list, file_list in os.walk(path):
+        for dir_name, _, file_list in os.walk(path):
             for filename in file_list:
                 file_path = os.path.join(dir_name, filename)
                 name = file_path.replace(path, "")[1:].replace("/", "\\")
@@ -161,7 +161,7 @@ class Archive:
 
 
                 logging.debug(f"name: {name}")
-                logging.debug(f"position: ???")
+                logging.debug("position: ???")
                 logging.debug(f"file size: {size}")
                 binary_files.append((name, size, contents))
 
@@ -354,15 +354,20 @@ class Archive:
 
         self.modified_entries[name] = EntryEdit(name, FileAction.REMOVE, None)
 
-    def extract(self, output: str):
+    def extract(self, output: str, *, files : List[str] = ()):
         """Extract the contents of the archive to a folder.
         
         Params
         -------
         output : str
             The folder to extract everything to
+        files : Optional[List[str]]
+            The list of files to extract
         """
-        for name in self.file_list():
+        if not files:
+            files = self.file_list()
+
+        for name in files:
             file = self.read_file(name)
             path = os.path.normpath(os.path.join(output, name).replace("\\", "/"))
         
@@ -413,5 +418,3 @@ class Archive:
         archive.seek(0)
 
         return cls(archive.read(), entries=entries)
-
-
