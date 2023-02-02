@@ -1,5 +1,5 @@
 # pyBIG
-Python library to programatically manipulate .big files, the archive format used in many of the game titles created by EA studios.
+Python library to programatically manipulate .big files, the archive format used in many of the game titles created by Westwood studios.
 
 This library is largely possible due to the work done by the OpenSage team ([Link](https://github.com/OpenSAGE/Docs/blob/master/file-formats/big/index.rst)). Eseentially this library is a python wrapper around the knowledge they gathered with some helper functions.
 
