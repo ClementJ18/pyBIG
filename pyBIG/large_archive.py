@@ -10,8 +10,8 @@ import tempfile
 class LargeArchive(BaseArchive):
     """If an archive is too large to load into memory, you can instead use this class. It expects a file path
     rather than raw bytes and doesn't store the entire file into memory. Rather it simply reads the headers
-    to obtain the list file and then stream data from the file when it needs to. Packing a file automatically
-    saves it and overwrites the existing file.
+    to obtain the list file and then stream data from the file when it needs to. You cannot repack a large
+    archive because repacking implies that no changes are made to the file. Instead use save.
 
     TODO: Additionally, this class can be used to construct and archive from a large directory.
 
@@ -37,7 +37,7 @@ class LargeArchive(BaseArchive):
     def __repr__(self):
         return f"< LargeArchive path={self.file_path} entries={len(self.entries)} dirty={bool(self.modified_entries)}"
 
-    def _pack(self):
+    def _pack(self, file_path = None):
         """Rewrite the archive with the modifications stores
         in self.modified_entries."""
         binary, total_size, file_count = self._create_file_list()
@@ -46,7 +46,8 @@ class LargeArchive(BaseArchive):
             self.entries = self._pack_file_list(fp, binary, total_size, file_count)
             name = fp.name
 
-        shutil.move(name, self.file_path)
+        path = file_path or self.file_path
+        shutil.move(name, path)
         self.modified_entries = {}
 
     def _pack_file_list(self, archive, binary, total_size, file_count):
@@ -179,15 +180,16 @@ class LargeArchive(BaseArchive):
             f.seek(entry.position)
             return f.read(entry.size)
 
-    def save(self, path: str):
+    def save(self, path: str = None):
         """Save the archive to a file.
 
         Params
         -------
-        path : str
-            The path to save to. Something like 'path/to/file/test.big'
+        path : Optional[str]
+            The new path to save to. Something like 'path/to/file/test.big'.
+            Omit this if you just want to save in the same file.
         """
-        self._pack()
+        self._pack(path)
 
     @classmethod
     def from_directory(cls, path: str, file_path: str) -> "LargeArchive":
@@ -207,6 +209,8 @@ class LargeArchive(BaseArchive):
         Archive
             Compiled archived
         """
+        raise NotImplementedError
+
         binary_files, total_size, file_count = cls._create_file_list_from_directory(path)
         entries = cls._pack_file_list_from_directory(binary_files, total_size, file_count)
 
@@ -229,3 +233,9 @@ class LargeArchive(BaseArchive):
             f.write(b"")
 
         return cls(file_path, entries={})
+
+    def repack(self):
+        """Update the archive to include all the modified entries. This clears
+        the list and updates the archive with the new data.
+        """
+        raise ValueError("Cannot repack a LargeArchive, use save instead.")

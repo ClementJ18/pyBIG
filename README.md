@@ -1,7 +1,7 @@
 # pyBIG
 Python library to programatically manipulate .big files, the archive format used in many of the game titles created by Westwood studios.
 
-This library is largely possible due to the work done by the OpenSage team ([Link](https://github.com/OpenSAGE/Docs/blob/master/file-formats/big/index.rst)). Eseentially this library is a python wrapper around the knowledge they gathered with some helper functions.
+This library is largely possible due to the work done by the OpenSage team ([Link](https://github.com/OpenSAGE/Docs/blob/master/file-formats/big/index.rst)). Essentially this library is a python wrapper around the knowledge they gathered with some helper functions.
 
 ## Installation
 
@@ -52,4 +52,13 @@ archive.extract("output/")
 # load an archive from a directory
 archive = Archive.from_directory("output/")
 
+```
+
+### Advanced
+In version 0.2.0, this library also makes the `LargeArchive` object available. This special object does not store the entire file into memory, allowing for manipulation of large files. It works essentially the same except that reading is done from the file present on disk and functions are tied to that location. Repacking is disabled since it implies that no changes are done to the file, instead use the save function.
+
+```python
+from pyBIG import LargeArchive
+
+archive = LargeArchive("test.big")
 ```
