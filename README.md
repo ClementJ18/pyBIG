@@ -64,4 +64,4 @@ archive = LargeArchive("test.big")
 ```
 
 ## TODO
-[ ] Investigate and implement proper compression (refpack)
+- [ ] Investigate and implement proper compression (refpack)
