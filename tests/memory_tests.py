@@ -33,15 +33,12 @@ def getsize(obj):
 class MemoryTests(unittest.TestCase):
     def test_1(self):
         archive = Archive.empty()
-
-        with open("test_data/__edain_data.big", "rb") as f:
-            archive.add_file("test.big", f.read())
+        archive.add_file("test_file.txt", b"Clement1"*1250000)
 
         in_memory_size = getsize(archive)
 
         archive = LargeArchive.empty("big_big.big")
-        with open("test_data/__edain_data.big", "rb") as f:
-            archive.add_file("test.big", f.read())
+        archive.add_file("test_file.txt", b"Clement1"*1250000)
 
         on_disk_size = getsize(archive)
 
@@ -51,8 +48,7 @@ class MemoryTests(unittest.TestCase):
 
     def test_2(self):
         archive = LargeArchive.empty("big_big.big")
-        with open("test_data/__edain_data.big", "rb") as f:
-            archive.add_file("test.big", f.read())
+        archive.add_file("test_file.txt", b"Clement1"*1250000)
 
         pre_save_size = getsize(archive)
 
@@ -64,7 +60,7 @@ class MemoryTests(unittest.TestCase):
         
         loaded_size = getsize(archive)
 
-        os.remove("test.big")
+        os.remove("big_big.big")
 
         assert pre_save_size == post_save_size == loaded_size
 
