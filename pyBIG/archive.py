@@ -2,7 +2,6 @@ import io
 import logging
 import os
 import struct
-from typing import List
 
 from .base_archive import BaseArchive, Entry, FileAction
 

@@ -1,6 +1,6 @@
 import enum
 from collections import namedtuple
-from typing import List
+from typing import Dict, List
 import logging
 import struct
 import os
@@ -17,6 +17,8 @@ class FileAction(enum.Enum):
 
 
 class BaseArchive:
+    modified_entries: Dict[str, EntryEdit]
+
     def _pack(self):
         """Rewrite the archive with the modifications stores
         in self.modified_entries."""
@@ -72,7 +74,7 @@ class BaseArchive:
             True if the file exists, else false
         """
         if name in self.modified_entries:
-            return not self.modified_entries[name].action is FileAction.REMOVE
+            return self.modified_entries[name].action is not FileAction.REMOVE
 
         return name in self.entries
 
