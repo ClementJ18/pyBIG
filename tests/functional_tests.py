@@ -100,6 +100,17 @@ class TestLargeArchive(BaseTestCases.BaseTest):
         self.assertIn(TEST_FILE, archive.entries)
         os.remove(TEST_ARCHIVE)
 
+    def test_archive_memory_size(self):
+        archive = LargeArchive.empty(TEST_ARCHIVE)
+        file_bytes = TEST_CONTENT.encode(TEST_ENCODING)
+        archive.add_file(TEST_FILE, file_bytes)
+
+        size = archive.archive_memory_size()
+
+        self.assertEqual(size, len(file_bytes))
+        os.remove(TEST_ARCHIVE)
+
+
 
 if __name__ == "__main__":
     # python -m unittest
