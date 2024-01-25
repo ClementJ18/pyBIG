@@ -5,7 +5,7 @@ import unittest
 
 from pyBIG import Archive, LargeArchive
 
-# logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 TEST_FILE = "data\\ini\\weapon.ini"
 TEST_CONTENT = "john"
