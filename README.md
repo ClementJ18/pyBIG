@@ -55,7 +55,7 @@ archive = Archive.from_directory("output/")
 ```
 
 ### Advanced
-In version 0.2.0, this library also makes the `LargeArchive` object available. This special object does not store the entire file into memory, allowing for manipulation of large files. It works essentially the same except that reading is done from the file present on disk and functions are tied to that location. Repacking is disabled since it implies that no changes are done to the file, instead use the save function.
+In version 0.2.0, this library also makes the `LargeArchive` object available. This special object does not store the entire file into memory, allowing for manipulation of large files. It works essentially the same except that reading is done from the file present on disk and functions are tied to that location. Repacking does the same as save on this object but it is recommended to instead use the save function.
 
 ```python
 from pyBIG import LargeArchive

@@ -1,5 +1,6 @@
 import os
 import shutil
+
 from .base_archive import BaseArchive
 import logging
 import struct
@@ -238,4 +239,20 @@ class LargeArchive(BaseArchive):
         """Update the archive to include all the modified entries. This clears
         the list and updates the archive with the new data.
         """
-        raise ValueError("Cannot repack a LargeArchive, use save instead.")
+        self._pack(None)
+
+    def add_file(self, name: str, content: bytes):
+        super().add_file(name, content)
+
+        self.save()
+
+    def remove_file(self, name: str):
+        super().remove_file(name)
+
+        self.save()
+
+    def edit_file(self, name: str, content: bytes):
+        super().edit_file(name, content)
+
+        self.save()
+
