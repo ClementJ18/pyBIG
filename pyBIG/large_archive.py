@@ -241,18 +241,3 @@ class LargeArchive(BaseArchive):
         """
         self._pack(None)
 
-    def add_file(self, name: str, content: bytes):
-        super().add_file(name, content)
-
-        self.save()
-
-    def remove_file(self, name: str):
-        super().remove_file(name)
-
-        self.save()
-
-    def edit_file(self, name: str, content: bytes):
-        super().edit_file(name, content)
-
-        self.save()
-

@@ -39,6 +39,7 @@ class MemoryTests(unittest.TestCase):
 
         archive = LargeArchive.empty("big_big.big")
         archive.add_file("test_file.txt", b"Clement1"*1250000)
+        archive.save()
 
         on_disk_size = getsize(archive)
 
@@ -49,9 +50,6 @@ class MemoryTests(unittest.TestCase):
     def test_2(self):
         archive = LargeArchive.empty("big_big.big")
         archive.add_file("test_file.txt", b"Clement1"*1250000)
-
-        pre_save_size = getsize(archive)
-
         archive.save()
 
         post_save_size = getsize(archive)
@@ -62,7 +60,7 @@ class MemoryTests(unittest.TestCase):
 
         os.remove("big_big.big")
 
-        assert pre_save_size == post_save_size == loaded_size
+        assert post_save_size == loaded_size
 
 if __name__ == "__main__":
     # python -m unittest
