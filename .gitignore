@@ -1,16 +1,9 @@
 
-*.big
-data/lotr.str
-test
-fake_test
-edain_files
 __pycache__
-tree.json
-extract
-output
-.env
-test_data/
+.env/
+draft_data/
 build/
-*.egg-info
 dist/
-env
+env/
+pyBIG.egg-info/
+tests/test_data/output/*
