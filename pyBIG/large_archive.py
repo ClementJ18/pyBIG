@@ -241,3 +241,10 @@ class LargeArchive(BaseArchive):
         """
         self._pack(None)
 
+    def archive_memory_size(self) -> int:
+        """Get the current in memory size of all the modifies entries that
+        have not yet been saved. You can use this to decide when you would
+        like to save in relation to the capacities of your machine.
+        """
+        return sum([len(entry.content) for entry in self.modified_entries.values() if entry.action in (FileAction.ADD, FileAction.EDIT)])
+
