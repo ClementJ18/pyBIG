@@ -14,6 +14,7 @@ TEST_ARCHIVE = "tests/test_data/empty_archive.big"
 class BaseTestCases:
     class BaseTest(unittest.TestCase):
         archive: Union[Archive, LargeArchive]
+
         def test_decode(self):
             contents = self.archive.read_file(TEST_FILE)
 
@@ -109,7 +110,6 @@ class TestLargeArchive(BaseTestCases.BaseTest):
 
         self.assertEqual(size, len(file_bytes))
         os.remove(TEST_ARCHIVE)
-
 
 
 if __name__ == "__main__":

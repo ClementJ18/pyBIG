@@ -1,10 +1,9 @@
 import enum
+import logging
+import os
+import struct
 from collections import namedtuple
 from typing import Dict, List
-import logging
-import struct
-import os
-
 
 Entry = namedtuple("Entry", "name position size")
 EntryEdit = namedtuple("EntryEdit", "name action content")

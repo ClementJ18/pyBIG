@@ -1,11 +1,11 @@
+import logging
 import os
 import shutil
-
-from .base_archive import BaseArchive
-import logging
 import struct
-from .base_archive import Entry, FileAction
 import tempfile
+
+from .base_archive import BaseArchive, Entry, FileAction
+from .utils import MaxSizeError
 
 
 class LargeArchive(BaseArchive):
@@ -38,7 +38,7 @@ class LargeArchive(BaseArchive):
     def __repr__(self):
         return f"< LargeArchive path={self.file_path} entries={len(self.entries)} dirty={bool(self.modified_entries)}"
 
-    def _pack(self, file_path = None):
+    def _pack(self, file_path=None):
         """Rewrite the archive with the modifications stores
         in self.modified_entries."""
         binary, total_size, file_count = self._create_file_list()
@@ -69,7 +69,11 @@ class LargeArchive(BaseArchive):
         # total file size, unsigned integer, 4 bytes, little endian byte order
         size = total_size + first_entry + 1
         logging.info(f"size: {size}")
-        archive.write(struct.pack("<I", size))
+
+        try:
+            archive.write(struct.pack("<I", size))
+        except struct.error as e:
+            raise MaxSizeError("File bigger than supporter by BIG format") from e
 
         # number of embedded files, unsigned integer, 4 bytes, big endian byte order
         logging.info(f"entry count: {file_count}")
@@ -101,8 +105,16 @@ class LargeArchive(BaseArchive):
         archive.write(b"\0")
 
         # raw file data at the positions specified in the index
-        for file in binary:
-            archive.write(self.read_file(file[0]))
+        with open(self.file_path, "rb") as existing_archive:
+            for file in binary:
+                if file[0] in self.modified_entries:
+                    file_entry = self.modified_entries[file[0]]
+                    if file_entry.action is not FileAction.REMOVE:
+                        archive.write(file_entry.content)
+                else:
+                    file_entry = self.entries[file[0]]
+                    existing_archive.seek(file_entry.position)
+                    archive.write(existing_archive.read(file_entry.size))
 
         logging.debug("DONE")
 
@@ -246,5 +258,10 @@ class LargeArchive(BaseArchive):
         have not yet been saved. You can use this to decide when you would
         like to save in relation to the capacities of your machine.
         """
-        return sum([len(entry.content) for entry in self.modified_entries.values() if entry.action in (FileAction.ADD, FileAction.EDIT)])
-
+        return sum(
+            [
+                len(entry.content)
+                for entry in self.modified_entries.values()
+                if entry.action in (FileAction.ADD, FileAction.EDIT)
+            ]
+        )
