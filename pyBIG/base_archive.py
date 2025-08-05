@@ -31,7 +31,7 @@ class BaseArchive:
         file.seek(0)
 
         # header
-        file.read(4)
+        header = file.read(4).decode("utf-8")
 
         file_size = struct.unpack("I", file.read(4))[0]
         logging.info(f"size: {file_size}")
@@ -57,7 +57,8 @@ class BaseArchive:
 
             entries[name] = Entry(name, position, entry_size)
 
-        return entries
+        return entries, header
+
 
     def file_exists(self, name: str) -> bool:
         """Check if a file exists
@@ -91,7 +92,9 @@ class BaseArchive:
                 *[
                     name
                     for name in self.entries.keys()
-                    if self.modified_entries.get(name, EntryEdit(name, None, None)).action
+                    if self.modified_entries.get(
+                        name, EntryEdit(name, None, None)
+                    ).action
                     is not FileAction.REMOVE
                 ],
                 *[

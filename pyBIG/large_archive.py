@@ -22,7 +22,7 @@ class LargeArchive(BaseArchive):
         The path to the archive.
     """
 
-    def __init__(self, file_path: str, *, entries=None):
+    def __init__(self, file_path: str, *, entries=None, header: str = "BIG4"):
         self.file_path = file_path
         self.modified_entries = {}
 
@@ -31,9 +31,10 @@ class LargeArchive(BaseArchive):
 
         if entries is None:
             with open(self.file_path, "rb") as f:
-                self.entries = self._unpack(f)
+                self.entries, self.header = self._unpack(f)
         else:
             self.entries = entries
+            self.header = header
 
     def __repr__(self):
         return f"< LargeArchive path={self.file_path} entries={len(self.entries)} dirty={bool(self.modified_entries)}"
@@ -44,19 +45,20 @@ class LargeArchive(BaseArchive):
         binary, total_size, file_count = self._create_file_list()
 
         with tempfile.NamedTemporaryFile(delete=False) as fp:
-            self.entries = self._pack_file_list(fp, binary, total_size, file_count)
+            self.entries = self._pack_file_list(
+                fp, binary, total_size, file_count, self.header
+            )
             name = fp.name
 
         path = file_path or self.file_path
         shutil.move(name, path)
         self.modified_entries = {}
 
-    def _pack_file_list(self, archive, binary, total_size, file_count):
+    def _pack_file_list(self, archive, binary, total_size, file_count, header):
         """Index the files and append the raw data to create a complete archive"""
         entries = {}
 
         # header, charstring, 4 bytes - always BIG4 or something similiar
-        header = "BIG4"
         archive.write(struct.pack("4s", header.encode("utf-8")))
 
         # https://github.com/chipgw/openbfme/blob/master/bigreader/bigarchive.cpp
@@ -176,7 +178,9 @@ class LargeArchive(BaseArchive):
             file_count += 1
             total_size += len(entry_bytes)
 
-        for entry in [x for x in self.modified_entries.values() if x.action is FileAction.ADD]:
+        for entry in [
+            x for x in self.modified_entries.values() if x.action is FileAction.ADD
+        ]:
             logging.info(f"adding {entry.name}")
             entry_bytes = entry.content
             binary_files.append((entry.name, len(entry_bytes)))
@@ -205,7 +209,9 @@ class LargeArchive(BaseArchive):
         self._pack(path)
 
     @classmethod
-    def from_directory(cls, path: str, file_path: str) -> "LargeArchive":
+    def from_directory(
+        cls, path: str, file_path: str, header: str = "BIG4"
+    ) -> "LargeArchive":
         """Generate a BIG archive from a directory. This is useful for
         compiling an archive without adding each file manually. You simply
         give the top level directory and every file will be added recursively.
@@ -216,6 +222,8 @@ class LargeArchive(BaseArchive):
             Path to the top level folder of the files you wish to compile
         file_path : str
             Path to save the new archive
+        header : str
+            The type of the archive, either BIG4 or BIGF
 
         Returns
         --------
@@ -224,13 +232,17 @@ class LargeArchive(BaseArchive):
         """
         raise NotImplementedError
 
-        binary_files, total_size, file_count = cls._create_file_list_from_directory(path)
-        entries = cls._pack_file_list_from_directory(binary_files, total_size, file_count)
+        binary_files, total_size, file_count = cls._create_file_list_from_directory(
+            path
+        )
+        entries = cls._pack_file_list_from_directory(
+            binary_files, total_size, file_count, header
+        )
 
         return cls(file_path, entries=entries)
 
     @classmethod
-    def empty(cls, file_path):
+    def empty(cls, file_path, header: str = "BIG4"):
         """Generate an empty archive.
 
         Params
@@ -245,7 +257,7 @@ class LargeArchive(BaseArchive):
         with open(file_path, "wb") as f:
             f.write(b"")
 
-        return cls(file_path, entries={})
+        return cls(file_path, entries={}, header=header)
 
     def repack(self):
         """Update the archive to include all the modified entries. This clears

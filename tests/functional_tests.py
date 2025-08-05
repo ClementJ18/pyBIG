@@ -15,6 +15,18 @@ class BaseTestCases:
     class BaseTest(unittest.TestCase):
         archive: Union[Archive, LargeArchive]
 
+        def tearDown(self):
+            for file in [
+                f"tests/test_data/output/{TEST_FILE}",
+                "tests/test_data/output/test.big",
+                TEST_ARCHIVE,
+                "tests/test_data/test_big_type.big"
+            ]:
+                try:
+                    os.remove(file)
+                except OSError:
+                    pass
+
         def test_decode(self):
             contents = self.archive.read_file(TEST_FILE)
 
@@ -60,9 +72,6 @@ class BaseTestCases:
             new_archive.save("tests/test_data/output/test.big")
             self.assertTrue(os.path.exists("tests/test_data/output/test.big"))
 
-            os.remove(f"tests/test_data/output/{TEST_FILE}")
-            os.remove("tests/test_data/output/test.big")
-
         def test_utils(self):
             self.archive.file_list()
 
@@ -78,6 +87,20 @@ class TestArchive(BaseTestCases.BaseTest):
         archive.repack()
 
         self.assertIn(TEST_FILE, archive.entries)
+
+    def test_archive_type(self):
+        path = "tests/test_data/test_big_type.big"
+
+        for header in ["BIG4", "BIGF"]:
+            archive = Archive.empty(header=header)
+            archive.add_file(TEST_FILE, TEST_CONTENT.encode(TEST_ENCODING))
+            archive.save(path)
+
+            with open(path, "rb") as f:
+                archive = Archive(f.read())
+
+            self.assertEqual(archive.header, header)
+            os.remove("tests/test_data/test_big_type.big")
 
 
 class TestLargeArchive(BaseTestCases.BaseTest):
@@ -99,7 +122,6 @@ class TestLargeArchive(BaseTestCases.BaseTest):
         archive.repack()
 
         self.assertIn(TEST_FILE, archive.entries)
-        os.remove(TEST_ARCHIVE)
 
     def test_archive_memory_size(self):
         archive = LargeArchive.empty(TEST_ARCHIVE)
@@ -109,7 +131,17 @@ class TestLargeArchive(BaseTestCases.BaseTest):
         size = archive.archive_memory_size()
 
         self.assertEqual(size, len(file_bytes))
-        os.remove(TEST_ARCHIVE)
+
+    def test_archive_type(self):
+        path = "tests/test_data/test_big_type.big"
+
+        for header in ["BIG4", "BIGF"]:
+            archive = LargeArchive.empty(path, header=header)
+            archive.add_file(TEST_FILE, TEST_CONTENT.encode(TEST_ENCODING))
+            archive.save()
+            archive = LargeArchive(path)
+            self.assertEqual(archive.header, header)
+            os.remove("tests/test_data/test_big_type.big")
 
 
 if __name__ == "__main__":

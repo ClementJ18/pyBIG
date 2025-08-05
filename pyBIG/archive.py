@@ -17,37 +17,38 @@ class Archive(BaseArchive):
 
     """
 
-    def __init__(self, content: bytes = b"", *, entries=None):
+    def __init__(self, content: bytes = b"", *, entries=None, header: str = "BIG4"):
         self.archive = io.BytesIO(content)
-
-        self.header = self.archive.read(4).decode("utf-8")
-
         self.entries = entries or {}
         self.modified_entries = {}
+        self.header = header
 
         if entries is None:
-            self.entries = self._unpack(self.archive)
+            self.entries, self.header = self._unpack(self.archive)
 
     def __repr__(self):
-        return f"< Archive entries={len(self.entries)} dirty={bool(self.modified_entries)}"
+        return (
+            f"< Archive entries={len(self.entries)} dirty={bool(self.modified_entries)}"
+        )
 
     def _pack(self):
         """Rewrite the archive with the modifications stores
         in self.modified_entries."""
         binary, total_size, file_count = self._create_file_list()
-        self.archive, self.entries = self._pack_file_list(binary, total_size, file_count)
+        self.archive, self.entries = self._pack_file_list(
+            binary, total_size, file_count, self.header
+        )
         self.archive.seek(0)
         self.modified_entries = {}
 
     @staticmethod
-    def _pack_file_list(binary, total_size, file_count):
+    def _pack_file_list(binary, total_size, file_count, header):
         """Index the files and append the raw data to create a complete archive"""
         archive = io.BytesIO()
         raw_data = io.BytesIO()
         entries = {}
 
         # header, charstring, 4 bytes - always BIG4 or something similiar
-        header = "BIG4"
         archive.write(struct.pack("4s", header.encode("utf-8")))
 
         # https://github.com/chipgw/openbfme/blob/master/bigreader/bigarchive.cpp
@@ -156,7 +157,9 @@ class Archive(BaseArchive):
             file_count += 1
             total_size += len(entry_bytes)
 
-        for entry in [x for x in self.modified_entries.values() if x.action is FileAction.ADD]:
+        for entry in [
+            x for x in self.modified_entries.values() if x.action is FileAction.ADD
+        ]:
             logging.info(f"adding {entry.name}")
             entry_bytes = entry.content
             binary_files.append((entry.name, len(entry_bytes), entry_bytes))
@@ -185,7 +188,7 @@ class Archive(BaseArchive):
             f.write(self.archive.getbuffer())
 
     @classmethod
-    def from_directory(cls, path: str) -> "Archive":
+    def from_directory(cls, path: str, header: str = "BIG4") -> "Archive":
         """Generate a BIG archive from a directory. This is useful for
         compiling an archive without adding each file manually. You simply
         give the top level directory and every file will be added recursively.
@@ -194,19 +197,36 @@ class Archive(BaseArchive):
         -------
         path : str
             Path to the top level folder of the files you wish to compile
+        header : str
+            The type of archive, either BIG4 or BIGF. Defaults to BIG4
 
         Returns
         --------
         Archive
             Compiled archived
         """
-        binary_files, total_size, file_count = cls._create_file_list_from_directory(path)
-        archive, entries = cls._pack_file_list(binary_files, total_size, file_count)
+        binary_files, total_size, file_count = cls._create_file_list_from_directory(
+            path
+        )
+        archive, entries = cls._pack_file_list(
+            binary_files, total_size, file_count, header
+        )
         archive.seek(0)
 
         return cls(archive.read(), entries=entries)
 
     @classmethod
-    def empty(cls):
-        """Generate an empty archive."""
-        return cls(entries={})
+    def empty(cls, header: str = "BIG4"):
+        """Generate an empty archive.
+
+        Params
+        -------
+        header : str
+            The type of the archive, can either be BIG4 or BIGF. Defaults to BIG4
+
+        Returns
+        --------
+        Archive
+            Empty archive
+        """
+        return cls(entries={}, header=header)
