@@ -78,6 +78,15 @@ class BaseTestCases:
         def test_utils(self):
             self.archive.file_list()
 
+        def test_archive_memory_size(self):
+            archive = InDiskArchive.empty(file_path=TEST_ARCHIVE)
+            file_bytes = TEST_CONTENT.encode(TEST_ENCODING)
+            archive.add_file(TEST_FILE, file_bytes)
+
+            size = archive.archive_memory_size()
+
+            self.assertEqual(size, len(file_bytes))
+
 
 class TestArchive(BaseTestCases.BaseTest):
     def setUp(self):
@@ -95,7 +104,7 @@ class TestArchive(BaseTestCases.BaseTest):
         path = "tests/test_data/test_big_type.big"
 
         for header in ["BIG4", "BIGF"]:
-            archive = InMemoryArchive.empty(header=header)
+            archive = InMemoryArchive.empty(header)
             archive.add_file(TEST_FILE, TEST_CONTENT.encode(TEST_ENCODING))
             archive.save(path)
 
@@ -120,26 +129,17 @@ class TestLargeArchive(BaseTestCases.BaseTest):
         self.archive.repack()
 
     def test_empty_archive(self):
-        archive = InDiskArchive.empty(TEST_ARCHIVE)
+        archive = InDiskArchive.empty(file_path=TEST_ARCHIVE)
         archive.add_file(TEST_FILE, TEST_CONTENT.encode(TEST_ENCODING))
         archive.repack()
 
         self.assertIn(TEST_FILE, archive.entries)
 
-    def test_archive_memory_size(self):
-        archive = InDiskArchive.empty(TEST_ARCHIVE)
-        file_bytes = TEST_CONTENT.encode(TEST_ENCODING)
-        archive.add_file(TEST_FILE, file_bytes)
-
-        size = archive.archive_memory_size()
-
-        self.assertEqual(size, len(file_bytes))
-
     def test_archive_type(self):
         path = "tests/test_data/test_big_type.big"
 
         for header in ["BIG4", "BIGF"]:
-            archive = InDiskArchive.empty(path, header=header)
+            archive = InDiskArchive.empty(header, file_path=path)
             archive.add_file(TEST_FILE, TEST_CONTENT.encode(TEST_ENCODING))
             archive.save()
             archive = InDiskArchive(path)

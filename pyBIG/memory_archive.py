@@ -4,7 +4,7 @@ from typing import IO, Type, TypeVar
 
 from .base_archive import BaseArchive, FileList
 
-T = TypeVar("T", bound="BaseArchive")
+T = TypeVar("T", bound="InMemoryArchive")
 
 
 class InMemoryArchive(BaseArchive):
@@ -84,7 +84,7 @@ class InMemoryArchive(BaseArchive):
             f.write(self.archive.getvalue())
 
     @classmethod
-    def from_directory(cls, path: str, header: str = "BIG4") -> Type[T]:
+    def from_directory(cls: Type[T], path: str, header: str = "BIG4") -> T:
         """Generate a BIG archive from a directory. This is useful for
         compiling an archive without adding each file manually. You simply
         give the top level directory and every file will be added recursively.
@@ -104,7 +104,7 @@ class InMemoryArchive(BaseArchive):
         return cls._pack_archive_from_directory(cls.empty(header), path)
 
     @classmethod
-    def empty(cls, header: str = "BIG4"):
+    def empty(cls: Type[T], header: str = "BIG4") -> T:
         """Generate an empty archive.
 
         Params

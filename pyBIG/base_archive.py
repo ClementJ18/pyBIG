@@ -9,7 +9,7 @@ from .utils import MaxSizeError
 
 Entry = namedtuple("Entry", "name position size")
 EntryEdit = namedtuple("EntryEdit", "name action content")
-FileList = Union[List[Tuple[str, int]],List[Tuple[str, int, int]]]
+FileList = Union[List[Tuple[str, int]], List[Tuple[str, int, int]]]
 T = TypeVar("T", bound="BaseArchive")
 
 
@@ -160,7 +160,7 @@ class BaseArchive:
         return entries
 
     @staticmethod
-    def _pack_archive_from_directory(archive: Type[T], path: str) -> Type[T]:
+    def _pack_archive_from_directory(archive: T, path: str) -> T:
         logging.info("building archive from folder")
         for dir_name, _, file_list in os.walk(path):
             for filename in file_list:
@@ -222,7 +222,7 @@ class BaseArchive:
 
         return file_list
 
-    def read_file(self, name: str):
+    def read_file(self, name: str) -> bytes:
         """Get the raw bytes of the file if the file exists. This method has
         the advantage over simply accessing Archive.entries that it will
         also check pending modified entries
@@ -320,7 +320,7 @@ class BaseArchive:
 
         self.modified_entries[name] = EntryEdit(name, FileAction.REMOVE, None)
 
-    def extract(self, output: str, *, files: List[str] = ()):
+    def extract(self, output: str, *, files: List[str] = None):
         """Extract the contents of the archive to a folder.
 
         Params
@@ -330,7 +330,7 @@ class BaseArchive:
         files : Optional[List[str]]
             The list of files to extract
         """
-        if not files:
+        if files is None:
             files = self.file_list()
 
         for name in files:
@@ -401,7 +401,7 @@ class BaseArchive:
         raise NotImplementedError
 
     @classmethod
-    def from_directory(cls, path: str, header: str = "BIG4", **kwargs) -> Type[T]:
+    def from_directory(cls: Type[T], path: str, header: str = "BIG4", **kwargs) -> T:
         """Generate a BIG archive from a directory. This is useful for
         compiling an archive without adding each file manually. You simply
         give the top level directory and every file will be added recursively.
@@ -418,4 +418,21 @@ class BaseArchive:
         Archive
             Compiled archived
         """
+        raise NotImplementedError
+
+    @classmethod
+    def empty(cls: Type[T], header: str = "BIG4", **kwargs) -> T:
+        """Generate an empty archive.
+
+        Params
+        -------
+        header : str
+            The type of the archive, can either be BIG4 or BIGF. Defaults to BIG4
+
+        Returns
+        --------
+        Archive
+            Empty archive
+        """
+
         raise NotImplementedError

@@ -100,7 +100,9 @@ class InDiskArchive(BaseArchive):
         self._pack(path)
 
     @classmethod
-    def from_directory(cls, path: str, header: str = "BIG4", *, file_path: str = None) -> Type[T]:
+    def from_directory(
+        cls: Type[T], path: str, header: str = "BIG4", *, file_path: str = None
+    ) -> T:
         """Generate a BIG archive from a directory. This is useful for
         compiling an archive without adding each file manually. You simply
         give the top level directory and every file will be added recursively.
@@ -109,27 +111,36 @@ class InDiskArchive(BaseArchive):
         -------
         path : str
             Path to the top level folder of the files you wish to compile
-        file_path : str
-            Path to save the new archive
         header : str
             The type of the archive, either BIG4 or BIGF
+        file_path : str
+            Path to save the new archive
 
         Returns
         --------
         Archive
             Compiled archived
         """
-        return cls._pack_archive_from_directory(cls.empty(file_path, header), path)
+        if file_path is None:
+            raise ValueError("Please specify a file path")
+
+        return cls._pack_archive_from_directory(cls.empty(header, file_path=file_path), path)
 
     @classmethod
-    def empty(cls, file_path, header: str = "BIG4"):
+    def empty(cls: Type[T], header: str = "BIG4", *, file_path: str = None) -> T:
         """Generate an empty archive.
 
         Params
         -------
+        header : str
+            The type of the archive, can either be BIG4 or BIGF. Defaults to BIG4
         file_path : str
-            Path to save the archive to once it becomes used.
+            Path to save the new archive
 
+        Returns
+        --------
+        Archive
+            Empty archive
         """
         if os.path.exists(file_path):
             raise ValueError(f"File {file_path} already exists.")

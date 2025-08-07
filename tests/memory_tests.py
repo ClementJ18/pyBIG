@@ -12,7 +12,7 @@ class MemoryTests(unittest.TestCase):
 
         in_memory_size = getsize(archive)
 
-        archive = InDiskArchive.empty("big_big.big")
+        archive = InDiskArchive.empty(file_path="big_big.big")
         archive.add_file("test_file.txt", b"Clement1" * 1250000)
         archive.save()
 
@@ -23,7 +23,7 @@ class MemoryTests(unittest.TestCase):
         assert in_memory_size > on_disk_size
 
     def test_2(self):
-        archive = InDiskArchive.empty("big_big.big")
+        archive = InDiskArchive.empty(file_path="big_big.big")
         archive.add_file("test_file.txt", b"Clement1" * 1250000)
         archive.save()
 
