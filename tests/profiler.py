@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 def speed():
     with open("test_data/__edain_data.big", "rb") as f:
-        archive = pyBIG.Archive(f.read())
+        archive = pyBIG.InMemoryArchive(f.read())
 
     archive.add_file("weapons.ini", b"")
     pr = cProfile.Profile()
@@ -30,9 +30,9 @@ def speed():
 
 def size():
     with open("test_data/__edain_data.big", "rb") as f:
-        archive = pyBIG.Archive(f.read())
+        archive = pyBIG.InMemoryArchive(f.read())
 
-    large_archive = pyBIG.LargeArchive("test_data/__edain_data.big")
+    large_archive = pyBIG.InDiskArchive("test_data/__edain_data.big")
 
     logging.info(f"Archive: {objsize.get_deep_size(archive)}")
     logging.info(f"Large Archive: {objsize.get_deep_size(large_archive)}")

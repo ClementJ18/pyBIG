@@ -1,6 +1,9 @@
-from .archive import Archive
-from .large_archive import LargeArchive
+from .memory_archive import InMemoryArchive
+from .disk_archive import InDiskArchive
 
-__version__ = "0.5.0"
+Archive = InMemoryArchive
+LargeArchive = InDiskArchive
 
-__all__ = ["Archive", "LargeArchive"]
+__version__ = "0.6.0"
+
+__all__ = ["InMemoryArchive", "InDiskArchive", "Archive", "LargeArchive"]

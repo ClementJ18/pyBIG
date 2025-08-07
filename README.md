@@ -12,24 +12,24 @@ pip install pyBIG
 ```
 
 ## Usage
-The library is based on the pyBIG.Archive object. This objects takes raw bytes representing a BIG archive. The decision to take raw bytes allow the user to decide where those bytes come from, whether a file stored in memory or on disk. There is also a class method, Archive.from_directory that allows you to load a directory on the disk painlessly.
+The library is based on the pyBIG.InMemoryArchive object. This objects takes raw bytes representing a BIG archive. The decision to take raw bytes allow the user to decide where those bytes come from, whether a file stored in memory or on disk. There is also a class method, InMemoryArchive.from_directory that allows you to load a directory on the disk painlessly.
 
 You can modify the archive in memory with the following methods:
- - Archive.edit_file(str, bytes)
- - Archive.add_file(str, bytes)
- - Archive.remove_file(str)
+ - InMemoryArchive.edit_file(str, bytes)
+ - InMemoryArchive.add_file(str, bytes)
+ - InMemoryArchive.remove_file(str)
 
 Each method takes a name which is the windows-format path to the file in the archive so something like 'data\ini\weapon.ini'. The methods that takes bytes represent the new contents of the file as bytes.
 
-It is important to note that these methods do not actually modify the archive but it is as if. This does not update the entries or the raw bytes. If you want to update the archive you need to call Archive.repack(). This is an expensive operation which is only called automatically when the archive is saved or extracted. The rest is up to the user.
+It is important to note that these methods do not actually modify the archive but it is as if. This does not update the entries or the raw bytes. If you want to update the archive you need to call InMemoryArchive.repack(). This is an expensive operation which is only called automatically when the archive is saved or extracted. The rest is up to the user.
 
 You can look at the tests for more examples.
 
 ```python
-from pyBIG import Archive
+from pyBIG import InMemoryArchive
 
 with open("test.big", "rb") as f:
-    archive = Archive(f.read())
+    archive = InMemoryArchive(f.read())
 
 # get the contents of a file as bytes
 contents = archive.read_file("data\\ini\\weapon.ini")
@@ -50,20 +50,31 @@ archive.save("test.big")
 archive.extract("output/")
 
 # load an archive from a directory
-archive = Archive.from_directory("output/")
+archive = InMemoryArchive.from_directory("output/")
 
 ```
 
 ### Advanced
-In version 0.2.0, this library also makes the `LargeArchive` object available. This special object does not store the entire file into memory, allowing for manipulation of large files. It works essentially the same except that reading is done from the file present on disk and functions are tied to that location. Repacking does the same as save on this object but it is recommended to instead use the save function.
+In version 0.2.0, this library also makes the `InDiskArchive` object available. This special object does not store the entire file into memory, allowing for manipulation of large files. It works essentially the same except that reading is done from the file present on disk and functions are tied to that location. Repacking does the same as save on this object but it is recommended to instead use the save function.
 
-It is important to note that adding and editing files in a LargeArchive stores them in memory. As such it is recommended to to save at regular interval to commit these changes to disk. The LargeArchive object exposes `archive_memory_size` as a simple way of seeing how many bytes are currently stored directly on the object. 
+It is important to note that adding and editing files in a InDiskArchive stores them in memory. As such it is recommended to to save at regular interval to commit these changes to disk. The InDiskArchive object exposes `archive_memory_size` as a simple way of seeing how many bytes are currently stored directly on the object. 
 
 ```python
-from pyBIG import LargeArchive
+from pyBIG import InDiskArchive
 
-archive = LargeArchive("test.big")
+archive = InDiskArchive("test.big")
 ```
 
 ## TODO
 - [ ] Investigate and implement proper compression (refpack)
+
+
+## Changelog
+
+### v0.6.0
+- Archive renamed to InMemoryArchive (alias remains for backwards compatibility)
+- LargeArchive renamed to InDiskArchive (alies remains for backward comaptibility)
+- Backend reworked to be cleaner
+- Archives now handle different big types
+- `InDiskArchive.from_directory` implemented but not very efficient yet
+
