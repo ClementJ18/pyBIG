@@ -3,13 +3,13 @@ import logging
 import os
 import struct
 from collections import namedtuple
-from typing import IO, Dict, Type, TypeVar
+from typing import IO, Dict, List, Tuple, Type, TypeVar, Union
 
 from .utils import MaxSizeError
 
 Entry = namedtuple("Entry", "name position size")
 EntryEdit = namedtuple("EntryEdit", "name action content")
-FileList = list[tuple[str, int]] | list[tuple[str, int, int]]
+FileList = Union[List[Tuple[str, int]],List[Tuple[str, int, int]]]
 T = TypeVar("T", bound="BaseArchive")
 
 
@@ -24,7 +24,7 @@ class BaseArchive:
     entries: Dict[str, Entry]
 
     @staticmethod
-    def _unpack(file: IO) -> tuple[list[Entry], str]:
+    def _unpack(file: IO) -> Tuple[List[Entry], str]:
         """Get a list of files in the big"""
         entries = {}
         file.seek(0)
@@ -58,7 +58,7 @@ class BaseArchive:
 
         return entries, header
 
-    def _create_file_list(self) -> tuple[FileList, int, int]:
+    def _create_file_list(self) -> Tuple[FileList, int, int]:
         """Re-gather the necessary information on each file in the archive
         while taking into account the modifications made by the user since
         then.
@@ -98,7 +98,7 @@ class BaseArchive:
     def _pack_file_list(
         self,
         archive_file: IO,
-        file_list: list[tuple[str, int]],
+        file_list: List[Tuple[str, int]],
         total_size: int,
         file_count: int,
         header: str,
@@ -193,14 +193,14 @@ class BaseArchive:
 
         return name in self.entries
 
-    def file_list(self) -> list[str]:
+    def file_list(self) -> List[str]:
         """Return a list of file names, compiling both actual files
         currently in the archive and new/removed files waiting
         to be repacked.
 
         Returns
         --------
-        list[str]
+        List[str]
             The list of file names
         """
         file_list = list(
@@ -320,14 +320,14 @@ class BaseArchive:
 
         self.modified_entries[name] = EntryEdit(name, FileAction.REMOVE, None)
 
-    def extract(self, output: str, *, files: list[str] = ()):
+    def extract(self, output: str, *, files: List[str] = ()):
         """Extract the contents of the archive to a folder.
 
         Params
         -------
         output : str
             The folder to extract everything to
-        files : Optional[list[str]]
+        files : Optional[List[str]]
             The list of files to extract
         """
         if not files:

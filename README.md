@@ -77,4 +77,5 @@ archive = InDiskArchive("test.big")
 - Backend reworked to be cleaner
 - Archives now handle different big types
 - `InDiskArchive.from_directory` implemented but not very efficient yet
+- Added more typing
 
