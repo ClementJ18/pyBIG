@@ -73,9 +73,9 @@ archive = InDiskArchive("test.big")
 
 ### v0.6.0
 - Archive renamed to InMemoryArchive (alias remains for backwards compatibility)
-- LargeArchive renamed to InDiskArchive (alies remains for backward comaptibility)
+- LargeArchive renamed to InDiskArchive (alias remains for backward comaptibility)
 - Backend reworked to be cleaner
-- Archives now handle different big types
+- Archives now handle different .big types
 - `InDiskArchive.from_directory` implemented but not very efficient yet
 - Added more typing
 
