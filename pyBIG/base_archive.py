@@ -436,3 +436,14 @@ class BaseArchive:
         """
 
         raise NotImplementedError
+
+    def bytes(self):
+        """Returns the archive data as bytes
+
+        Returns
+        --------
+        bytes
+            The archive data
+        """
+
+        raise NotImplementedError

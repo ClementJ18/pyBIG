@@ -118,3 +118,15 @@ class InMemoryArchive(BaseArchive):
             Empty archive
         """
         return cls(entries={}, header=header)
+
+    def bytes(self):
+        """Returns the archive data as bytes
+
+        Returns
+        --------
+        bytes
+            The archive data
+        """
+        self._pack()
+
+        return self.archive.getvalue()

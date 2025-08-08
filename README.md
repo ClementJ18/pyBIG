@@ -68,6 +68,27 @@ from pyBIG import InDiskArchive
 archive = InDiskArchive("test.big")
 ```
 
+## RefPack
+
+The library grossly implements the refpack compression algorithm which allows users to compress and decompress that to and from that format. This is done very simply
+```python
+
+from pyBIG import InMemoryArchive, refpack
+
+with open("test.big", "rb") as f:
+    archive = InMemoryArchive(f.read())
+
+compressed = refpack.compress(archive.bytes())
+decompressed = refpack.decompress(compressed)
+
+archive_2 = InMemoryArchive(decompressed)
+
+assert archive.bytes() == decompressed
+assert archive.file_list() == archive_2.file_list()
+```
+
+You can also check if data has the refpack header which is a potential indicator that the data is refpack encoded using `refpack.has_refpack_header`. Data without the header could still be encoded, just without the header. Best way to try is to just attempt to decompress, python zen and all.
+
 ## Tests
 
 Tests must be run from root directory
@@ -77,7 +98,7 @@ Tests must be run from root directory
 
 
 ## TODO
-- [ ] Investigate and implement proper compression (refpack)
+- [x] Investigate and implement proper compression (refpack)
 
 
 ## Changelog
@@ -89,4 +110,6 @@ Tests must be run from root directory
 - Archives now handle different .big types
 - `InDiskArchive.from_directory` implemented but not very efficient yet
 - Added more typing
+- Added `BaseArchive.bytes`
+- Inmplemented refpack compression
 

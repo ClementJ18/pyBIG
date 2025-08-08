@@ -149,3 +149,16 @@ class InDiskArchive(BaseArchive):
             f.write(b"")
 
         return cls(file_path, entries={}, header=header)
+
+    def bytes(self):
+        """Returns the archive data as bytes
+
+        Returns
+        --------
+        bytes
+            The archive data
+        """
+        self._pack()
+
+        with open(self.file_path, "rb") as f:
+            return f.read()

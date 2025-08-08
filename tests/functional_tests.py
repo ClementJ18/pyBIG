@@ -4,8 +4,9 @@ from typing import Union
 import unittest
 
 from pyBIG import InMemoryArchive, InDiskArchive
+from pyBIG.refpack import compress, decompress, has_refpack_header
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 TEST_FILE = "read_me_for_test.txt"
@@ -87,6 +88,10 @@ class BaseTestCases:
 
             self.assertEqual(size, len(file_bytes))
 
+        def test_archive_bytes(self):
+            data = self.archive.bytes()
+            self.assertIsInstance(data, bytes)
+
 
 class TestArchive(BaseTestCases.BaseTest):
     def setUp(self):
@@ -145,6 +150,56 @@ class TestLargeArchive(BaseTestCases.BaseTest):
             archive = InDiskArchive(path)
             self.assertEqual(archive.header, header)
             os.remove("tests/test_data/test_big_type.big")
+
+
+class TestRefPack(unittest.TestCase):
+    def test_refpack_check_valid_data(self):
+        data = b"Sample data for testing."
+        compressed = compress(data)
+        self.assertTrue(has_refpack_header(compressed))
+
+    def test_refpack_check_invalid_magic(self):
+        invalid_data = b"\x00\x00\x00\x00"
+        self.assertFalse(has_refpack_header(invalid_data))
+
+    def test_refpack_check_invalid_size(self):
+        # Construct data with valid magic but invalid size (0)
+        data = b"\x10\xfb\x00\x00"
+        self.assertFalse(has_refpack_header(data))
+
+    def test_compress_decompress_roundtrip(self):
+        data = b"Example data to compress and decompress."
+        compressed = compress(data)
+        decompressed = decompress(compressed)
+        self.assertEqual(decompressed, data)
+
+    def test_decompress_size_mismatch_raises(self):
+        data = b"Test data with mismatch"
+        compressed = compress(data)
+        corrupted = bytearray(compressed)
+        corrupted[2:5] = b"\x00\x00\x00"  # corrupt expected size
+        with self.assertRaises(ValueError):
+            decompress(bytes(corrupted), ignore_mismatch=False)
+
+    def test_decompress_size_mismatch_ignore(self):
+        data = b"Test data with mismatch"
+        compressed = compress(data)
+        corrupted = bytearray(compressed)
+        corrupted[2:5] = b"\x00\x00\x00"
+        decompressed = decompress(bytes(corrupted), ignore_mismatch=True)
+        self.assertTrue(decompressed)  # decompress returns bytes even if size mismatch ignored
+
+    def test_empty_data(self):
+        data = b""
+        compressed = compress(data)
+        decompressed = decompress(compressed)
+        self.assertEqual(decompressed, data)
+
+    def test_large_data(self):
+        data = b"A" * 10_000
+        compressed = compress(data)
+        decompressed = decompress(compressed)
+        self.assertEqual(decompressed, data)
 
 
 if __name__ == "__main__":
