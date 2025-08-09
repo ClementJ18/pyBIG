@@ -12,24 +12,27 @@ pip install pyBIG
 ```
 
 ## Usage
-The library is based on the pyBIG.Archive object. This objects takes raw bytes representing a BIG archive. The decision to take raw bytes allow the user to decide where those bytes come from, whether a file stored in memory or on disk. There is also a class method, Archive.from_directory that allows you to load a directory on the disk painlessly.
+This library offers a few different implementations of BaseArchive that all represent a .BIG archive. Their main difference is how they manipulate the data. Read below to select the best one for your use case. All these objects have the same or very similar interface. Namely:
+ - BaseArchive.edit_file(str, bytes)
+ - BaseArchive.add_file(str, bytes)
+ - BaseArchive.remove_file(str)
 
-You can modify the archive in memory with the following methods:
- - Archive.edit_file(str, bytes)
- - Archive.add_file(str, bytes)
- - Archive.remove_file(str)
+Each method takes a name which is the windows-format path to the file in the archive so something like 'data\ini\weapon.ini'. The methods that takes bytes represent the new contents of the file as bytes. To apply the changes you need to use BaseARchuve.repack().
 
-Each method takes a name which is the windows-format path to the file in the archive so something like 'data\ini\weapon.ini'. The methods that takes bytes represent the new contents of the file as bytes.
+There are also a few utility functions
+ - BaseArchive.from_directory(str, str, **kwargs)
+ - BaseArchive.empty(str, **kwargs)
 
-It is important to note that these methods do not actually modify the archive but it is as if. This does not update the entries or the raw bytes. If you want to update the archive you need to call Archive.repack(). This is an expensive operation which is only called automatically when the archive is saved or extracted. The rest is up to the user.
+Below is a more in depth explaination. You can look at the tests for more examples.
 
-You can look at the tests for more examples.
+### InMemoryArchive
+As the name implies, the InMemoryArchive loads the entire archive into memory and keeps it there, doing all manipulations from there. You can save it back to disk with InMemoryArchive.save(str).
 
 ```python
-from pyBIG import Archive
+from pyBIG import InMemoryArchive
 
 with open("test.big", "rb") as f:
-    archive = Archive(f.read())
+    archive = InMemoryArchive(f.read())
 
 # get the contents of a file as bytes
 contents = archive.read_file("data\\ini\\weapon.ini")
@@ -50,20 +53,61 @@ archive.save("test.big")
 archive.extract("output/")
 
 # load an archive from a directory
-archive = Archive.from_directory("output/")
+archive = InMemoryArchive.from_directory("output/")
 
 ```
 
-### Advanced
-In version 0.2.0, this library also makes the `LargeArchive` object available. This special object does not store the entire file into memory, allowing for manipulation of large files. It works essentially the same except that reading is done from the file present on disk and functions are tied to that location. Repacking does the same as save on this object but it is recommended to instead use the save function.
+### InDiskArchive
+The InDiskArchive does not store the entire file into memory, allowing for manipulation of larger files. It works essentially the same except that reading is done from the file present on disk and functions are tied to that location. Repacking does the same as save on this object but it is recommended to instead use the save function.
 
-It is important to note that adding and editing files in a LargeArchive stores them in memory. As such it is recommended to to save at regular interval to commit these changes to disk. The LargeArchive object exposes `archive_memory_size` as a simple way of seeing how many bytes are currently stored directly on the object. 
+It is important to note that adding and editing files in a InDiskArchive stores them in memory. As such it is recommended to save at regular interval to commit these changes to disk. The BaseArchive object exposes `archive_memory_size` as a simple way of seeing how many bytes are currently stored directly on the object. 
 
 ```python
-from pyBIG import LargeArchive
+from pyBIG import InDiskArchive
 
-archive = LargeArchive("test.big")
+archive = InDiskArchive("test.big")
 ```
 
+## RefPack
+
+The library grossly implements the refpack compression algorithm which allows users to compress and decompress files to and from that format. This is done very simply:
+```python
+
+from pyBIG import refpack
+
+to_compress = b"My bytes to compress"
+compressed = refpack.compress(to_compress)
+decompressed = refpack.decompress(compressed)
+
+
+assert to_compress == decompressed
+```
+
+You can also check if data has the refpack header which is a potential indicator that the data is refpack encoded using `refpack.has_refpack_header`. Data without the header could still be encoded, just without the header. Best way to try is to just attempt to decompress, python zen and all.
+
+For clarity, you must compressed individual files before adding them to the the .big file, is is entirely left up to the reponsibility of the user to do this. If you have done so then the SAGE engine games will be able to read the compressed files flawlessly.
+
+## Tests
+
+Tests must be run from root directory
+* `python -m unittest tests.functional_tests`
+* `python -m unittest tests.memory_tests`
+* `python -m unittest tests.profiler`
+
+
 ## TODO
-- [ ] Investigate and implement proper compression (refpack)
+- [x] Investigate and implement proper compression (refpack)
+
+
+## Changelog
+
+### v0.6.0
+- Archive renamed to InMemoryArchive (alias remains for backwards compatibility)
+- LargeArchive renamed to InDiskArchive (alias remains for backward comaptibility)
+- Backend reworked to be cleaner
+- Archives now handle different .big types
+- `InDiskArchive.from_directory` implemented but not very efficient yet
+- Added more typing
+- Added `BaseArchive.bytes`
+- Inmplemented refpack compression
+

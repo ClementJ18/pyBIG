@@ -20,6 +20,7 @@ setup(
     description="A library for manipulating BIG format archives",
     long_description_content_type="text/markdown",
     long_description=readme,
+    python_requires='>=3.8',
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Intended Audience :: Developers",
@@ -28,6 +29,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Utilities",

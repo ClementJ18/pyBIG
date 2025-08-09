@@ -3,10 +3,14 @@ import logging
 import os
 import struct
 from collections import namedtuple
-from typing import Dict, List
+from typing import IO, Dict, List, Tuple, Type, TypeVar, Union
+
+from .utils import MaxSizeError
 
 Entry = namedtuple("Entry", "name position size")
 EntryEdit = namedtuple("EntryEdit", "name action content")
+FileList = Union[List[Tuple[str, int]], List[Tuple[str, int, int]]]
+T = TypeVar("T", bound="BaseArchive")
 
 
 class FileAction(enum.Enum):
@@ -17,21 +21,16 @@ class FileAction(enum.Enum):
 
 class BaseArchive:
     modified_entries: Dict[str, EntryEdit]
-
-    def _pack(self):
-        """Rewrite the archive with the modifications stores
-        in self.modified_entries."""
-
-        raise NotImplementedError
+    entries: Dict[str, Entry]
 
     @staticmethod
-    def _unpack(file):
+    def _unpack(file: IO) -> Tuple[List[Entry], str]:
         """Get a list of files in the big"""
         entries = {}
         file.seek(0)
 
         # header
-        file.read(4)
+        header = file.read(4).decode("utf-8")
 
         file_size = struct.unpack("I", file.read(4))[0]
         logging.info(f"size: {file_size}")
@@ -57,7 +56,124 @@ class BaseArchive:
 
             entries[name] = Entry(name, position, entry_size)
 
+        return entries, header
+
+    def _create_file_list(self) -> Tuple[FileList, int, int]:
+        """Re-gather the necessary information on each file in the archive
+        while taking into account the modifications made by the user since
+        then.
+        """
+        file_list = []
+        file_count = 0
+        total_size = 0
+
+        for name in self.entries:
+            if name in self.modified_entries:
+                entry = self.modified_entries[name]
+                entry_bytes = entry.content
+
+                if entry.action is FileAction.REMOVE:
+                    logging.info(f"removing {name}")
+                    continue
+
+                logging.info(f"editing {name}")
+            else:
+                entry = self.entries[name]
+                entry_bytes = self._get_file(name)
+
+            file_list.append((entry.name, len(entry_bytes), entry_bytes))
+            file_count += 1
+            total_size += len(entry_bytes)
+
+        for entry in [x for x in self.modified_entries.values() if x.action is FileAction.ADD]:
+            logging.info(f"adding {entry.name}")
+            entry_bytes = entry.content
+            file_list.append((entry.name, len(entry_bytes), entry_bytes))
+            file_count += 1
+            total_size += len(entry_bytes)
+
+        file_list.sort(key=lambda x: x[0])
+        return file_list, total_size, file_count
+
+    def _pack_file_list(
+        self,
+        archive_file: IO,
+        file_list: List[Tuple[str, int]],
+        total_size: int,
+        file_count: int,
+        header: str,
+    ):
+        """Index the files and append the raw data to create a complete archive"""
+        entries = {}
+
+        # header, charstring, 4 bytes - always BIG4 or something similiar
+        archive_file.write(struct.pack("4s", header.encode("utf-8")))
+
+        # https://github.com/chipgw/openbfme/blob/master/bigreader/bigarchive.cpp
+        # /* 8 bytes for every entry + 20 at the start and end. */
+        first_entry = (len(file_list) * 8) + 20
+
+        for file in file_list:
+            first_entry += len(file[0]) + 1
+
+        # total file size, unsigned integer, 4 bytes, little endian byte order
+        size = total_size + first_entry + 1
+        logging.info(f"size: {size}")
+
+        try:
+            archive_file.write(struct.pack("<I", size))
+        except struct.error as e:
+            raise MaxSizeError("File bigger than supporter by BIG format") from e
+
+        # number of embedded files, unsigned integer, 4 bytes, big endian byte order
+        logging.info(f"entry count: {file_count}")
+        archive_file.write(struct.pack(">I", file_count))
+
+        # total size of index table in bytes, unsigned integer, 4 bytes, big endian byte order
+        logging.info(f"index size: {first_entry}")
+        archive_file.write(struct.pack(">I", first_entry))
+
+        position = 1
+
+        logging.info("packing file list...")
+        for file in file_list:
+            # position of embedded file within BIG-file, unsigned integer, 4 bytes, big endian byte order
+            # size of embedded data, unsigned integer, 4 bytes, big endian byte order
+            logging.debug("packing %s", file[0])
+            pos_size = struct.pack(">II", first_entry + position, file[1])
+
+            # file name, cstring, ends with null byte
+            name = file[0].encode("latin-1") + b"\x00"
+            packed_name = struct.pack(f"{len(name)}s", name)
+            archive_file.write(pos_size + packed_name)
+
+            entries[file[0]] = Entry(file[0], first_entry + position, file[1])
+
+            position += file[1]
+
+        # not sure what's this but I think we need it see:
+        # https://github.com/chipgw/openbfme/blob/master/bigreader/bigarchive.cpp
+        archive_file.write(b"L253")
+        archive_file.write(b"\0")
+        logging.info("DONE packing file list")
+
         return entries
+
+    @staticmethod
+    def _pack_archive_from_directory(archive: T, path: str) -> T:
+        logging.info("building archive from folder")
+        for dir_name, _, file_list in os.walk(path):
+            for filename in file_list:
+                file_path = os.path.join(dir_name, filename)
+                name = file_path.replace(path, "")[1:].replace("/", "\\")
+
+                with open(file_path, "rb") as f:
+                    logging.debug("adding %s", name)
+                    archive.add_file(name, f.read())
+
+        archive._pack()
+        logging.info("done building archive from folder")
+        return archive
 
     def file_exists(self, name: str) -> bool:
         """Check if a file exists
@@ -78,13 +194,14 @@ class BaseArchive:
         return name in self.entries
 
     def file_list(self) -> List[str]:
-        """Return a list of files, compiling both actual files
-        and new/removed files
+        """Return a list of file names, compiling both actual files
+        currently in the archive and new/removed files waiting
+        to be repacked.
 
         Returns
         --------
         List[str]
-            The list of files
+            The list of file names
         """
         file_list = list(
             {
@@ -105,9 +222,9 @@ class BaseArchive:
 
         return file_list
 
-    def read_file(self, name: str):
-        """Get the raw bytes of the file if the file exists. This method has the
-        advantage over simply accessing Archive.entries that it will
+    def read_file(self, name: str) -> bytes:
+        """Get the raw bytes of the file if the file exists. This method has
+        the advantage over simply accessing Archive.entries that it will
         also check pending modified entries
 
         Params
@@ -203,7 +320,7 @@ class BaseArchive:
 
         self.modified_entries[name] = EntryEdit(name, FileAction.REMOVE, None)
 
-    def extract(self, output: str, *, files: List[str] = ()):
+    def extract(self, output: str, *, files: List[str] = None):
         """Extract the contents of the archive to a folder.
 
         Params
@@ -213,7 +330,7 @@ class BaseArchive:
         files : Optional[List[str]]
             The list of files to extract
         """
-        if not files:
+        if files is None:
             files = self.file_list()
 
         for name in files:
@@ -232,10 +349,46 @@ class BaseArchive:
         """Update the archive to include all the modified entries. This clears
         the list and updates the archive with the new data.
         """
-        if not self.modified_entries:
-            return
-
         self._pack()
+
+    def archive_memory_size(self) -> int:
+        """Get the current in memory size of all the modifies entries that
+        have not yet been saved. You can use this to decide when you would
+        like to save in relation to the capacities of your machine.
+        """
+        return sum(
+            [
+                len(entry.content)
+                for entry in self.modified_entries.values()
+                if entry.action in (FileAction.ADD, FileAction.EDIT)
+            ]
+        )
+
+    def _create_entry(self, name: str, content: bytes) -> tuple:
+        """Create a file entry."""
+
+        raise NotImplementedError
+
+    def _get_file(self, name: str) -> bytes:
+        """Archive specific method for retrieving file bytes from
+        the archive.
+        """
+
+        raise NotImplementedError
+
+    def _pack(self):
+        """Rewrite the archive with the modifications stored
+        in self.modified_entries.
+        """
+
+        raise NotImplementedError
+
+    def _pack_files(
+        self, raw_data_file: IO, file_list: FileList, total_size: int, file_count: int
+    ):
+        """Combine all files into a single raw data bundle"""
+
+        raise NotImplementedError
 
     def save(self, path: str):
         """Save the archive to a file.
@@ -248,7 +401,7 @@ class BaseArchive:
         raise NotImplementedError
 
     @classmethod
-    def from_directory(cls, path: str) -> "BaseArchive":
+    def from_directory(cls: Type[T], path: str, header: str = "BIG4", **kwargs) -> T:
         """Generate a BIG archive from a directory. This is useful for
         compiling an archive without adding each file manually. You simply
         give the top level directory and every file will be added recursively.
@@ -257,10 +410,40 @@ class BaseArchive:
         -------
         path : str
             Path to the top level folder of the files you wish to compile
+        header : str
+            The type of the archive, either BIG4 or BIGF
 
         Returns
         --------
         Archive
             Compiled archived
         """
+        raise NotImplementedError
+
+    @classmethod
+    def empty(cls: Type[T], header: str = "BIG4", **kwargs) -> T:
+        """Generate an empty archive.
+
+        Params
+        -------
+        header : str
+            The type of the archive, can either be BIG4 or BIGF. Defaults to BIG4
+
+        Returns
+        --------
+        Archive
+            Empty archive
+        """
+
+        raise NotImplementedError
+
+    def bytes(self):
+        """Returns the archive data as bytes
+
+        Returns
+        --------
+        bytes
+            The archive data
+        """
+
         raise NotImplementedError
