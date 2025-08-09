@@ -70,24 +70,22 @@ archive = InDiskArchive("test.big")
 
 ## RefPack
 
-The library grossly implements the refpack compression algorithm which allows users to compress and decompress that to and from that format. This is done very simply
+The library grossly implements the refpack compression algorithm which allows users to compress and decompress files to and from that format. This is done very simply:
 ```python
 
-from pyBIG import InMemoryArchive, refpack
+from pyBIG import refpack
 
-with open("test.big", "rb") as f:
-    archive = InMemoryArchive(f.read())
-
-compressed = refpack.compress(archive.bytes())
+to_compress = b"My bytes to compress"
+compressed = refpack.compress(to_compress)
 decompressed = refpack.decompress(compressed)
 
-archive_2 = InMemoryArchive(decompressed)
 
-assert archive.bytes() == decompressed
-assert archive.file_list() == archive_2.file_list()
+assert to_compress == decompressed
 ```
 
 You can also check if data has the refpack header which is a potential indicator that the data is refpack encoded using `refpack.has_refpack_header`. Data without the header could still be encoded, just without the header. Best way to try is to just attempt to decompress, python zen and all.
+
+For clarity, you must compressed individual files before adding them to the the .big file, is is entirely left up to the reponsibility of the user to do this. If you have done so then the SAGE engine games will be able to read the compressed files flawlessly.
 
 ## Tests
 
