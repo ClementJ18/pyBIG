@@ -100,6 +100,10 @@ Tests must be run from root directory
 
 
 ## Changelog
+
+### v0.6.3
+- Repacking after having remove and added an existing file no longe creates duplicate entries
+
 ### v0.6.2
 - `InDiskArchive.empty()` now allows overwriting existing files
 

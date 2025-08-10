@@ -67,27 +67,15 @@ class BaseArchive:
         file_count = 0
         total_size = 0
 
-        for name in self.entries:
+        for name in self.file_list():
             if name in self.modified_entries:
                 entry = self.modified_entries[name]
                 entry_bytes = entry.content
-
-                if entry.action is FileAction.REMOVE:
-                    logging.info(f"removing {name}")
-                    continue
-
-                logging.info(f"editing {name}")
+                logging.info(f"applying change from modified entries for {name}")
             else:
                 entry = self.entries[name]
                 entry_bytes = self._get_file(name)
 
-            file_list.append((entry.name, len(entry_bytes), entry_bytes))
-            file_count += 1
-            total_size += len(entry_bytes)
-
-        for entry in [x for x in self.modified_entries.values() if x.action is FileAction.ADD]:
-            logging.info(f"adding {entry.name}")
-            entry_bytes = entry.content
             file_list.append((entry.name, len(entry_bytes), entry_bytes))
             file_count += 1
             total_size += len(entry_bytes)
