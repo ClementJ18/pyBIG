@@ -62,7 +62,10 @@ class InMemoryArchive(BaseArchive):
 
         logging.info("packing files")
         for file in file_list:
-            raw_data_file.write(file[2])
+            if file[0] in self.modified_entries:
+                raw_data_file.write(file[2])
+            else:
+                raw_data_file.write(self._get_file(file[0]))
         logging.info("finished packing files")
 
     def _get_file(self, name: str) -> bytes:

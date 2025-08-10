@@ -103,6 +103,8 @@ Tests must be run from root directory
 
 ### v0.6.3
 - Repacking after having remove and added an existing file no longe creates duplicate entries
+- minor speed optimization
+- minor memory usage optimization
 
 ### v0.6.2
 - `InDiskArchive.empty()` now allows overwriting existing files

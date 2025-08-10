@@ -3,13 +3,13 @@ import logging
 import os
 import struct
 from collections import namedtuple
-from typing import IO, Dict, List, Tuple, Type, TypeVar, Union
+from typing import IO, Dict, List, Optional, Tuple, Type, TypeVar
 
 from .utils import MaxSizeError
 
 Entry = namedtuple("Entry", "name position size")
 EntryEdit = namedtuple("EntryEdit", "name action content")
-FileList = Union[List[Tuple[str, int]], List[Tuple[str, int, int]]]
+FileList = List[Tuple[str, int, Optional[int]]]
 T = TypeVar("T", bound="BaseArchive")
 
 
@@ -38,18 +38,19 @@ class BaseArchive:
         logging.info(f"entry count: {archive_count}")
         logging.info(f"index size: {index_size}")
 
+        index_data = file.read(index_size)
+        buf = memoryview(index_data)
+        offset = 0
+        entry_struct = struct.Struct(">II")
+
         for _ in range(archive_count):
-            position, entry_size = struct.unpack(">II", file.read(8))
+            position, entry_size = entry_struct.unpack_from(buf, offset)
+            offset += entry_struct.size
 
-            name = b""
-            while True:
-                n = file.read(1)
-                if ord(n) == 0:
-                    break
+            end = buf[offset:].tobytes().find(b"\x00")
+            name = buf[offset : offset + end].tobytes().decode("latin-1")
+            offset += end
 
-                name += n
-
-            name = name.decode("latin-1")
             logging.debug(f"name: {name}")
             logging.debug(f"position: {position}")
             logging.debug(f"file size: {entry_size}")
@@ -70,15 +71,17 @@ class BaseArchive:
         for name in self.file_list():
             if name in self.modified_entries:
                 entry = self.modified_entries[name]
+                entry_size = len(entry.content)
                 entry_bytes = entry.content
                 logging.info(f"applying change from modified entries for {name}")
             else:
                 entry = self.entries[name]
-                entry_bytes = self._get_file(name)
+                entry_size = entry.size
+                entry_bytes = None
 
-            file_list.append((entry.name, len(entry_bytes), entry_bytes))
+            file_list.append((entry.name, entry_size, entry_bytes))
             file_count += 1
-            total_size += len(entry_bytes)
+            total_size += entry_size
 
         file_list.sort(key=lambda x: x[0])
         return file_list, total_size, file_count
@@ -95,14 +98,13 @@ class BaseArchive:
         entries = {}
 
         # header, charstring, 4 bytes - always BIG4 or something similiar
-        archive_file.write(struct.pack("4s", header.encode("utf-8")))
+        archive_file.write(header.encode("utf-8"))
 
         # https://github.com/chipgw/openbfme/blob/master/bigreader/bigarchive.cpp
-        # /* 8 bytes for every entry + 20 at the start and end. */
-        first_entry = (len(file_list) * 8) + 20
-
+        # /* 8 bytes for every entry, the entry, a blank bytes, and 20 at the start and end. */
+        first_entry = 20
         for file in file_list:
-            first_entry += len(file[0]) + 1
+            first_entry += len(file[0]) + 1 + 8
 
         # total file size, unsigned integer, 4 bytes, little endian byte order
         size = total_size + first_entry + 1
@@ -121,19 +123,20 @@ class BaseArchive:
         logging.info(f"index size: {first_entry}")
         archive_file.write(struct.pack(">I", first_entry))
 
+        # Put the first file one byte after the end of the header.
         position = 1
 
         logging.info("packing file list...")
+        entry_struct = struct.Struct(">II")
         for file in file_list:
             # position of embedded file within BIG-file, unsigned integer, 4 bytes, big endian byte order
             # size of embedded data, unsigned integer, 4 bytes, big endian byte order
             logging.debug("packing %s", file[0])
-            pos_size = struct.pack(">II", first_entry + position, file[1])
+            pos_size = entry_struct.pack(first_entry + position, file[1])
 
             # file name, cstring, ends with null byte
             name = file[0].encode("latin-1") + b"\x00"
-            packed_name = struct.pack(f"{len(name)}s", name)
-            archive_file.write(pos_size + packed_name)
+            archive_file.write(pos_size + name)
 
             entries[file[0]] = Entry(file[0], first_entry + position, file[1])
 

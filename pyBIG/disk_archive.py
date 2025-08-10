@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from typing import IO, Type, TypeVar
 
-from .base_archive import BaseArchive, FileAction, FileList
+from .base_archive import BaseArchive, FileList
 
 T = TypeVar("T", bound="InDiskArchive")
 
@@ -72,8 +72,7 @@ class InDiskArchive(BaseArchive):
             for file in file_list:
                 if file[0] in self.modified_entries:
                     file_entry = self.modified_entries[file[0]]
-                    if file_entry.action is not FileAction.REMOVE:
-                        raw_data_file.write(file_entry.content)
+                    raw_data_file.write(file_entry.content)
                 else:
                     file_entry = self.entries[file[0]]
                     existing_archive.seek(file_entry.position)
