@@ -142,9 +142,6 @@ class InDiskArchive(BaseArchive):
         Archive
             Empty archive
         """
-        if os.path.exists(file_path):
-            raise ValueError(f"File {file_path} already exists.")
-
         with open(file_path, "wb") as f:
             f.write(b"")
 

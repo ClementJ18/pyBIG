@@ -100,6 +100,8 @@ Tests must be run from root directory
 
 
 ## Changelog
+### v0.6.2
+- `InDiskArchive.empty()` now allows overwriting existing files
 
 ### v0.6.1
 - Type hinted `BaseArchive.bytes()`
