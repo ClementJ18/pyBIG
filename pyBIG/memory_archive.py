@@ -119,7 +119,7 @@ class InMemoryArchive(BaseArchive):
         """
         return cls(entries={}, header=header)
 
-    def bytes(self):
+    def bytes(self) -> bytes:
         """Returns the archive data as bytes
 
         Returns

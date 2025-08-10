@@ -101,6 +101,9 @@ Tests must be run from root directory
 
 ## Changelog
 
+### v0.6.1
+- Type hinted `BaseArchive.bytes()`
+
 ### v0.6.0
 - Archive renamed to InMemoryArchive (alias remains for backwards compatibility)
 - LargeArchive renamed to InDiskArchive (alias remains for backward comaptibility)

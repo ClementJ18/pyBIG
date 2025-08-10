@@ -150,7 +150,7 @@ class InDiskArchive(BaseArchive):
 
         return cls(file_path, entries={}, header=header)
 
-    def bytes(self):
+    def bytes(self) -> bytes:
         """Returns the archive data as bytes
 
         Returns
