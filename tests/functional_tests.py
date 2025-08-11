@@ -1,9 +1,12 @@
 import logging
 import os
+import random
+import string
 from typing import Union
 import unittest
+import uuid
 
-from pyBIG import InMemoryArchive, InDiskArchive
+from pyBIG import InMemoryArchive, InDiskArchive, base_archive
 from pyBIG.refpack import compress, decompress, has_refpack_header
 
 logging.basicConfig(level=logging.INFO)
@@ -15,9 +18,19 @@ TEST_ENCODING = "latin-1"
 TEST_ARCHIVE = "tests/test_data/empty_archive.big"
 
 
+def string_generator(length: int) -> str:
+    return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+
 class BaseTestCases:
     class BaseTest(unittest.TestCase):
         archive: Union[InMemoryArchive, InDiskArchive]
+
+        def empty(self, header: str = "BIG4") -> base_archive.BaseArchive:
+            raise NotImplementedError
+
+        def open_from_path(self, path: str) -> base_archive.BaseArchive:
+            raise NotImplementedError
 
         def tearDown(self):
             for file in [
@@ -25,6 +38,7 @@ class BaseTestCases:
                 "tests/test_data/output/test.big",
                 TEST_ARCHIVE,
                 "tests/test_data/test_big_type.big",
+                "tests/test_data/test_offset.big",
             ]:
                 try:
                     os.remove(file)
@@ -92,14 +106,44 @@ class BaseTestCases:
             data = self.archive.bytes()
             self.assertIsInstance(data, bytes)
 
+        def test_offsets(self):
+            archive: base_archive.BaseArchive = self.empty()
+            SIZE = 25
+            path = "tests/test_data/test_offset.big"
+            titles = [str(uuid.uuid4()) for _ in range(SIZE)]
+            values = [string_generator(50).encode("utf-8") for _ in range(SIZE)]
+
+            for x in range(SIZE):
+                archive.add_file(titles[x], values[x])
+
+            archive.repack()
+
+            for x in range(SIZE):
+                contents = archive.read_file(titles[x])
+                self.assertEqual(values[x], contents)
+
+            archive.save(path)
+            archive: base_archive.BaseArchive = self.open_from_path(path)
+
+            for x in range(SIZE):
+                contents = archive.read_file(titles[x])
+                self.assertEqual(values[x], contents)
+
 
 class TestArchive(BaseTestCases.BaseTest):
     def setUp(self):
         with open("tests/test_data/test_big.big", "rb") as f:
             self.archive = InMemoryArchive(f.read())
 
+    def empty(self, header: str = "BIG4") -> base_archive.BaseArchive:
+        return InMemoryArchive.empty(header)
+
+    def open_from_path(self, path: str) -> base_archive.BaseArchive:
+        with open(path, "rb") as f:
+            return InMemoryArchive(f.read())
+
     def test_empty_archive(self):
-        archive = InMemoryArchive.empty()
+        archive = self.empty()
         archive.add_file(TEST_FILE, TEST_CONTENT.encode(TEST_ENCODING))
         archive.repack()
 
@@ -109,7 +153,7 @@ class TestArchive(BaseTestCases.BaseTest):
         path = "tests/test_data/test_big_type.big"
 
         for header in ["BIG4", "BIGF"]:
-            archive = InMemoryArchive.empty(header)
+            archive = self.empty(header)
             archive.add_file(TEST_FILE, TEST_CONTENT.encode(TEST_ENCODING))
             archive.save(path)
 
@@ -132,6 +176,12 @@ class TestLargeArchive(BaseTestCases.BaseTest):
                 self.archive.add_file(TEST_FILE, f.read())
 
         self.archive.repack()
+
+    def empty(self, header: str = "BIG4"):
+        return InDiskArchive.empty(header, file_path="tests/test_data/test_big_type.big")
+
+    def open_from_path(self, path: str) -> base_archive.BaseArchive:
+        return InDiskArchive(path)
 
     def test_empty_archive(self):
         archive = InDiskArchive.empty(file_path=TEST_ARCHIVE)

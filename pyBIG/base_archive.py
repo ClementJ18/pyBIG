@@ -49,7 +49,7 @@ class BaseArchive:
 
             end = buf[offset:].tobytes().find(b"\x00")
             name = buf[offset : offset + end].tobytes().decode("latin-1")
-            offset += end
+            offset += end + 1
 
             logging.debug(f"name: {name}")
             logging.debug(f"position: {position}")

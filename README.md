@@ -101,7 +101,10 @@ Tests must be run from root directory
 
 ## Changelog
 
-### v0.6.3
+### v0.6.4
+- Fixed bug with offset unpacking
+
+### v0.6.3 (yanked)
 - Repacking after having remove and added an existing file no longe creates duplicate entries
 - minor speed optimization
 - minor memory usage optimization
