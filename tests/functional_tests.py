@@ -120,14 +120,30 @@ class BaseTestCases:
 
             for x in range(SIZE):
                 contents = archive.read_file(titles[x])
-                self.assertEqual(values[x], contents)
+                self.assertEqual(values[x], contents, "Offset incorrect after adding files")
 
             archive.save(path)
             archive: base_archive.BaseArchive = self.open_from_path(path)
 
             for x in range(SIZE):
                 contents = archive.read_file(titles[x])
-                self.assertEqual(values[x], contents)
+                self.assertEqual(values[x], contents, "Offset incorrect after saving archive")
+
+            for _ in range(5):
+                pop = random.choice(range(len(titles)))
+                name = titles.pop(pop)
+                print(name)
+                values.pop(pop)
+                archive.remove_file(name)
+
+            archive.save(path)
+            archive: base_archive.BaseArchive = self.open_from_path(path)
+
+            for x in range(len(titles)):
+                contents = archive.read_file(titles[x])
+                self.assertEqual(
+                    values[x], contents, "Offset incorrect after removing files and saving archive"
+                )
 
 
 class TestArchive(BaseTestCases.BaseTest):

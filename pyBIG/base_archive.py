@@ -5,8 +5,6 @@ import struct
 from collections import namedtuple
 from typing import IO, Dict, List, Optional, Tuple, Type, TypeVar
 
-from .utils import MaxSizeError
-
 Entry = namedtuple("Entry", "name position size")
 EntryEdit = namedtuple("EntryEdit", "name action content")
 FileList = List[Tuple[str, int, Optional[int]]]
@@ -16,7 +14,10 @@ T = TypeVar("T", bound="BaseArchive")
 class FileAction(enum.Enum):
     ADD = 0
     REMOVE = 1
-    EDIT = 2
+
+
+class MaxSizeError(Exception):
+    pass
 
 
 class BaseArchive:
@@ -32,7 +33,7 @@ class BaseArchive:
         # header
         header = file.read(4).decode("utf-8")
 
-        file_size = struct.unpack("I", file.read(4))[0]
+        file_size = struct.unpack("<I", file.read(4))[0]
         logging.info(f"size: {file_size}")
         archive_count, index_size = struct.unpack(">II", file.read(8))
         logging.info(f"entry count: {archive_count}")
@@ -72,14 +73,12 @@ class BaseArchive:
             if name in self.modified_entries:
                 entry = self.modified_entries[name]
                 entry_size = len(entry.content)
-                entry_bytes = entry.content
                 logging.info(f"applying change from modified entries for {name}")
             else:
                 entry = self.entries[name]
                 entry_size = entry.size
-                entry_bytes = None
 
-            file_list.append((entry.name, entry_size, entry_bytes))
+            file_list.append((entry.name, entry_size))
             file_count += 1
             total_size += entry_size
 
@@ -290,7 +289,7 @@ class BaseArchive:
         if not self.file_exists(name):
             raise KeyError(f"File '{name}' does not exist.")
 
-        self.modified_entries[name] = EntryEdit(name, FileAction.EDIT, content)
+        self.modified_entries[name] = EntryEdit(name, FileAction.ADD, content)
 
     def remove_file(self, name: str):
         """Mark as existing file for deletion. The deletion will only happen once
@@ -351,14 +350,9 @@ class BaseArchive:
             [
                 len(entry.content)
                 for entry in self.modified_entries.values()
-                if entry.action in (FileAction.ADD, FileAction.EDIT)
+                if entry.action is FileAction.ADD
             ]
         )
-
-    def _create_entry(self, name: str, content: bytes) -> tuple:
-        """Create a file entry."""
-
-        raise NotImplementedError
 
     def _get_file(self, name: str) -> bytes:
         """Archive specific method for retrieving file bytes from

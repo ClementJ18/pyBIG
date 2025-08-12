@@ -101,6 +101,9 @@ Tests must be run from root directory
 
 ## Changelog
 
+### v0.6.5
+- Bugfix repacking after removing a file
+
 ### v0.6.4
 - Fixed bug with offset unpacking
 

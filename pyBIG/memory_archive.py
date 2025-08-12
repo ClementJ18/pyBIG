@@ -40,20 +40,14 @@ class InMemoryArchive(BaseArchive):
         new_archive = io.BytesIO()
 
         file_data = self._create_file_list()
-        self.entries = self._pack_file_list(new_archive, *file_data, self.header)
+        entries = self._pack_file_list(new_archive, *file_data, self.header)
 
         self._pack_files(new_archive, *file_data)
 
         self.archive = new_archive
+        self.entries = entries
         self.archive.seek(0)
         self.modified_entries = {}
-
-    def _create_entry(self, name: str, content: bytes) -> tuple:
-        """In this in-memory archive, an entry is the name, size
-        of the file and the contents of the file
-        """
-
-        return name, len(content), content
 
     def _pack_files(
         self, raw_data_file: IO, file_list: FileList, total_size: int, file_count: int
@@ -63,7 +57,8 @@ class InMemoryArchive(BaseArchive):
         logging.info("packing files")
         for file in file_list:
             if file[0] in self.modified_entries:
-                raw_data_file.write(file[2])
+                file_entry = self.modified_entries[file[0]]
+                raw_data_file.write(file_entry.content)
             else:
                 raw_data_file.write(self._get_file(file[0]))
         logging.info("finished packing files")

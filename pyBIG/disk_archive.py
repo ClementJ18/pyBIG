@@ -44,22 +44,15 @@ class InDiskArchive(BaseArchive):
         file_data = self._create_file_list()
 
         with tempfile.NamedTemporaryFile(delete=False) as fp:
-            self.entries = self._pack_file_list(fp, *file_data, self.header)
+            entries = self._pack_file_list(fp, *file_data, self.header)
             name = fp.name
 
             self._pack_files(fp, *file_data)
 
         path = file_path or self.file_path
+        self.entries = entries
         shutil.move(name, path)
         self.modified_entries = {}
-
-    def _create_entry(self, name: str, content: bytes) -> tuple:
-        """In this archive we try to keep as few things in memory
-        as possible, as such an entry does not include the contents
-        itself.
-        """
-
-        return name, len(content)
 
     def _pack_files(
         self, raw_data_file: IO, file_list: FileList, total_size: int, file_count: int
