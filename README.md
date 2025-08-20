@@ -101,6 +101,9 @@ Tests must be run from root directory
 
 ## Changelog
 
+### v0.6.6
+- Added `BaseArchive.get_file_entry()`
+
 ### v0.6.5
 - Bugfix repacking after removing a file
 

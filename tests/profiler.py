@@ -1,8 +1,10 @@
-import pstats
-import objsize
-import pyBIG
-import logging
 import cProfile
+import logging
+import pstats
+
+import objsize
+
+import pyBIG
 
 logging.basicConfig(level=logging.INFO)
 

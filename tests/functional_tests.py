@@ -2,11 +2,11 @@ import logging
 import os
 import random
 import string
-from typing import Union
 import unittest
 import uuid
+from typing import Union
 
-from pyBIG import InMemoryArchive, InDiskArchive, base_archive
+from pyBIG import InDiskArchive, InMemoryArchive, base_archive
 from pyBIG.refpack import compress, decompress, has_refpack_header
 
 logging.basicConfig(level=logging.INFO)
@@ -74,6 +74,10 @@ class BaseTestCases:
                 self.archive.repack()
 
             self.archive.add_file(TEST_FILE, TEST_CONTENT.encode(TEST_ENCODING))
+            entry = self.archive.get_file_entry(TEST_FILE)
+            self.assertEqual(entry.size, len(TEST_CONTENT.encode(TEST_ENCODING)))
+            self.assertEqual(entry.position, -1)
+
             self.archive.repack()
 
             contents = self.archive.read_file(TEST_FILE).decode(TEST_ENCODING)
@@ -91,7 +95,8 @@ class BaseTestCases:
             self.assertTrue(os.path.exists("tests/test_data/output/test.big"))
 
         def test_utils(self):
-            self.archive.file_list()
+            file_list = self.archive.file_list()
+            self.archive.get_file_entry(file_list[0])
 
         def test_archive_memory_size(self):
             archive = InDiskArchive.empty(file_path=TEST_ARCHIVE)

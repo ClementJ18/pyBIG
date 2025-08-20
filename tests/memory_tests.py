@@ -1,10 +1,10 @@
-import sys
 import os
+import sys
 import unittest
 from gc import get_referents
 from types import FunctionType, ModuleType
 
-from pyBIG import InMemoryArchive, InDiskArchive
+from pyBIG import InDiskArchive, InMemoryArchive
 
 # Custom objects know their class.
 # Function objects seem to know way too much, including modules.

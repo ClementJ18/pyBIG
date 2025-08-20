@@ -6,7 +6,7 @@ from collections import namedtuple
 from typing import IO, Dict, List, Optional, Tuple, Type, TypeVar
 
 Entry = namedtuple("Entry", "name position size")
-EntryEdit = namedtuple("EntryEdit", "name action content")
+EntryEdit = namedtuple("EntryEdit", "name action content size")
 FileList = List[Tuple[str, int, Optional[int]]]
 T = TypeVar("T", bound="BaseArchive")
 
@@ -198,7 +198,7 @@ class BaseArchive:
                 *[
                     name
                     for name in self.entries.keys()
-                    if self.modified_entries.get(name, EntryEdit(name, None, None)).action
+                    if self.modified_entries.get(name, EntryEdit(name, None, None, 0)).action
                     is not FileAction.REMOVE
                 ],
                 *[
@@ -211,6 +211,29 @@ class BaseArchive:
         file_list.sort()
 
         return file_list
+
+    def get_file_entry(self, name: str) -> Entry:
+        """Get the file entry for a given file name.
+
+        Params
+        -------
+        name : str
+            Name of the file, usually something like data\\ini\\weapon.ini
+
+        Returns
+        -------
+        Entry
+            The file entry. If the file is part of the edited files
+            position will be -1.
+        """
+        if not self.file_exists(name):
+            raise KeyError(f"File '{name}' does not exist.")
+
+        if name in self.modified_entries:
+            entry = self.modified_entries[name]
+            return Entry(name, -1, entry.size)
+
+        return self.entries[name]
 
     def read_file(self, name: str) -> bytes:
         """Get the raw bytes of the file if the file exists. This method has
@@ -267,7 +290,7 @@ class BaseArchive:
         if "/" in name:
             raise ValueError(f"File '{name}' cannot contain '/', use '\\' instead.")
 
-        self.modified_entries[name] = EntryEdit(name, FileAction.ADD, content)
+        self.modified_entries[name] = EntryEdit(name, FileAction.ADD, content, len(content))
 
     def edit_file(self, name: str, content: bytes):
         """Edit an existing file with new content. This does not actually modify
@@ -289,7 +312,7 @@ class BaseArchive:
         if not self.file_exists(name):
             raise KeyError(f"File '{name}' does not exist.")
 
-        self.modified_entries[name] = EntryEdit(name, FileAction.ADD, content)
+        self.modified_entries[name] = EntryEdit(name, FileAction.ADD, content, len(content))
 
     def remove_file(self, name: str):
         """Mark as existing file for deletion. The deletion will only happen once
@@ -308,7 +331,7 @@ class BaseArchive:
         if not self.file_exists(name):
             raise KeyError(f"File '{name}' does not exist.")
 
-        self.modified_entries[name] = EntryEdit(name, FileAction.REMOVE, None)
+        self.modified_entries[name] = EntryEdit(name, FileAction.REMOVE, None, 0)
 
     def extract(self, output: str, *, files: List[str] = None):
         """Extract the contents of the archive to a folder.
